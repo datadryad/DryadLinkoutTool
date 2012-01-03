@@ -4,7 +4,7 @@
  * Last updated on Dec 30, 2011
  * 
  */
-package org.DataDryad.LinkoutTool;
+package org.dspace.curate;
 
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.params.HttpMethodParams;
@@ -35,33 +35,22 @@ import java.util.Set;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
 
-public class LinkoutTool extends AbstractCurationTask{
+public class NCBILinkOutBuilder extends AbstractCurationTask{
     
-    Map<String,Set<String>> articleDataMap = new HashMap<String,Set<String>>();  //articleID -> datapackageID
+    Map<String,Set<String>> articleDataMap = null;  //articleID -> set of datapackageID
     
-    static Logger logger = Logger.getLogger(LinkoutTool.class.getName());
+    static Logger logger = Logger.getLogger(NCBILinkOutBuilder.class.getName());
 
     @Override
     public void init(Curator curator, String taskID) throws IOException{
         super.init(curator, taskID);
-    }
-
-    
-//    private void process(){
-//        DryadDBConnection c = new DryadDBConnection();
-//        String dbID = c.connect();
-//        if (dbID == null){
-//            logger.fatal("Could not open Dryad Database connection");
-//            System.exit(0);
-//        }
-//        fillArticleDataMap(articleDataMap,c);
-//    }
-
-    
-    private void fillArticleDataMap(Map<String,Set<String>> dataMap, DryadDBConnection c){
         
+        // init article to data package mapping
+        articleDataMap = new HashMap<String,Set<String>>();
     }
 
+
+    
     @Override
     public int perform(DSpaceObject arg0) throws IOException {
         // TODO Auto-generated method stub
