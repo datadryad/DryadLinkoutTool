@@ -1,9 +1,8 @@
 /*
- * EthOntos - a tool for comparative methods using ontologies
- * Copyright 2004-2005 Peter E. Midford
+ * NCBI Linkout generator for Dryad
  * 
  * Created on Apr 4, 2012
- * Last updated on Apr 4, 2012
+ * Last updated on Apr 6, 2012
  * 
  */
 package org.DataDryad.LinkoutTool;
