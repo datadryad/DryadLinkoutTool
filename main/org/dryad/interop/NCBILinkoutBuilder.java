@@ -35,7 +35,7 @@ public class NCBILinkoutBuilder {
     static final String PACKAGECOLLECTIONNAME = "Dryad Data Packages";
     
     final Set<DryadPackage> dryadPackages = new HashSet<DryadPackage>();
-    final Set<DryadArticle> dryadArticles = new HashSet<DryadArticle>();
+    final Set<Publication> publications = new HashSet<Publication>();
     
     static final String NCBIEntrezPrefix = "";
     
@@ -71,28 +71,28 @@ public class NCBILinkoutBuilder {
             }
             else{
                 for (String doi : doi_set){
-                    DryadArticle art = new DryadArticle(doi);
-                    dryadArticles.add(art);
-                    art.lookupPMID();
-                    if (art.getPMIDs().size() == 0)
+                    Publication pub = new Publication(doi);
+                    publications.add(pub);
+                    pub.lookupPMID();
+                    if (pub.getPMIDs().size() == 0)
                         noPMID++;
                 }
             }
         }
         logger.info("Found " + dryadPackages.size() + " packages");
         logger.info("Found " + noDOI + " packages with no DOIs");
-        logger.info("Found " + noPMID + " packages with DOIs that resolved to no PMIDs");
+        logger.info("Found " + noPMID + " publications with DOIs that resolved to no PMIDs");
         dbc.disconnect();
         int queryCount = 0;
         int hitCount = 0;
-        for(DryadArticle art : dryadArticles){
-            if (art.getPMIDs().size() >0){
-                for (String pmid : art.getPMIDs()){
+        for(Publication pub : publications){
+            if (pub.getPMIDs().size() >0){
+                for (String pmid : pub.getPMIDs()){
                     for (String dbName : NCBIDatabaseNames.keySet()){
                         String query = NCBIDatabasePrefix + NCBIDatabaseNames.get(dbName) + "&id=" + pmid;
                         Document d = queryNCBI(query);
                         if (d != null){
-                            boolean processResult = processQueryReturn(d, query, art);
+                            boolean processResult = processQueryReturn(d, query, pub);
                             if (processResult){
                                 hitCount++;
                             }
@@ -108,8 +108,8 @@ public class NCBILinkoutBuilder {
         }
         //captured everything in a dryad article, now generate the xml linkout file
         LinkoutTarget target = new LinkoutTarget(builderFactory);
-        for (DryadArticle art : dryadArticles){
-            target.addArticle(art);
+        for (Publication pub : publications){
+            target.addPublication(pub);
         }
     }
     
@@ -129,11 +129,11 @@ public class NCBILinkoutBuilder {
         }
     }
     
-    private boolean processQueryReturn(Document d, String query, DryadArticle art){
+    private boolean processQueryReturn(Document d, String query, Publication pub){
         boolean valid=true;
         for(Node docChild = d.getFirstChild();docChild != null && valid; docChild=docChild.getNextSibling()){
             if ("eLinkResult".equals(docChild.getNodeName()) && docChild.hasChildNodes()){
-                valid = processELinkResult(docChild,query,art);
+                valid = processELinkResult(docChild,query,pub);
             }
         }
         return valid;
@@ -141,20 +141,20 @@ public class NCBILinkoutBuilder {
     
     
     
-    private boolean processELinkResult(Node eLinkElement,String query, DryadArticle art){
+    private boolean processELinkResult(Node eLinkElement,String query, Publication pub){
         boolean valid = true;
         for(Node child = eLinkElement.getFirstChild();child != null; child = child.getNextSibling()){
             if (child.getNodeType() == Node.TEXT_NODE){
                 //ignore
             }
             else if ("LinkSet".equals(child.getNodeName()) && child.hasChildNodes()){
-                valid = processLinkSetElement(child,query,art);
+                valid = processLinkSetElement(child,query,pub);
             }
         }
         return valid;
     }
     
-    private boolean processLinkSetElement(Node linkSetElement, String query, DryadArticle art){
+    private boolean processLinkSetElement(Node linkSetElement, String query, Publication pub){
         boolean valid = true;
         for(Node child = linkSetElement.getFirstChild();child != null; child = child.getNextSibling()){
             if (child.getNodeType() == Node.TEXT_NODE){
@@ -171,7 +171,7 @@ public class NCBILinkoutBuilder {
                 valid = checkIdList(child);
             }
             else if ("LinkSetDb".equals(child.getNodeName())){
-                valid = processLinkSetDb(child,query,art);
+                valid = processLinkSetDb(child,query,pub);
             }
             else 
                 System.out.println("LinkSet child name = " + child.getNodeName() + " Child count = " + child.getChildNodes().getLength());            
@@ -198,7 +198,7 @@ public class NCBILinkoutBuilder {
     }
     
     
-    private boolean processLinkSetDb(Node linkSetDbElement, String query, DryadArticle art){
+    private boolean processLinkSetDb(Node linkSetDbElement, String query, Publication pub){
         boolean valid = true;
         for (Node child = linkSetDbElement.getFirstChild();child != null;child =child.getNextSibling()){
             if (child.getNodeType() == Node.TEXT_NODE){

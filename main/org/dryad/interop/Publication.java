@@ -28,7 +28,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
-public class DryadArticle {
+public class Publication {
     
     private String doi;
     private Set<String>pmids;
@@ -36,9 +36,9 @@ public class DryadArticle {
     final static String PMIDQUERYURI = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=";
     final static String PMIDQUERYSUFFIX = "[doi]"; 
     
-    static final Logger logger = Logger.getLogger(DryadArticle.class);
+    static final Logger logger = Logger.getLogger(Publication.class);
 
-    public DryadArticle(String newDOI){
+    public Publication(String newDOI){
         doi = newDOI;
     }
 

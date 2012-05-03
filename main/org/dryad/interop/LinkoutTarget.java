@@ -23,7 +23,7 @@ public class LinkoutTarget {
     }
 
 
-    void addArticle(DryadArticle art) {
+    void addPublication(Publication pub) {
         // TODO Auto-generated method stub
         
     }
