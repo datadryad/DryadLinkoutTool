@@ -14,6 +14,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -32,6 +33,7 @@ public class Publication {
     
     private String doi;
     private Set<String>pmids;
+    private HashMap<String,String> links;
     
     final static String PMIDQUERYURI = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=";
     final static String PMIDQUERYSUFFIX = "[doi]"; 
@@ -118,6 +120,11 @@ public class Publication {
     
     public Set<String>getPMIDs(){
         return pmids;
+    }
+
+    public boolean hasPMIDLinks(String pmid) {
+        // TODO Auto-generated method stub
+        return false;
     }
     
 }

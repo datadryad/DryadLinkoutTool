@@ -12,7 +12,7 @@ import static org.junit.Assert.*;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
-import org.dryad.interop.DryadArticle;
+import org.dryad.interop.Publication;
 import org.dryad.interop.NCBILinkoutBuilder;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -21,7 +21,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class TestDryadArticle {
+public class TestPublication {
     
     static final String testdoi = "doi:10.1111/j.1469-7580.2009.01108.x";
     static final String brokendoi = "doi: 10.1111/j.1365-2699.2008.02015.x";
@@ -46,13 +46,13 @@ public class TestDryadArticle {
 
     @Test
     public void testDryadArticle() {
-        final DryadArticle testArticle = new DryadArticle(testdoi);
+        final Publication testArticle = new Publication(testdoi);
         assertEquals(testdoi,testArticle.getDOI());
     }
 
     @Test
     public void testLookupPMID() {
-        final DryadArticle testArticle = new DryadArticle(testdoi);
+        final Publication testArticle = new Publication(testdoi);
         testArticle.lookupPMID();
         Set<String> pmtest = testArticle.getPMIDs();
         Assert.assertNotNull(pmtest);
@@ -60,7 +60,7 @@ public class TestDryadArticle {
         for (String id : pmtest){
             Assert.assertEquals("19549004", id);
         }
-        final DryadArticle brokenArticle = new DryadArticle(brokendoi);
+        final Publication brokenArticle = new Publication(brokendoi);
         brokenArticle.lookupPMID();
         pmtest = brokenArticle.getPMIDs();
         Assert.assertNotNull(pmtest);

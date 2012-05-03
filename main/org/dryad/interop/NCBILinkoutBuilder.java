@@ -2,13 +2,14 @@
  * NCBI Linkout generator for Dryad
  *
  * Created on Feb 17, 2012
- * Last updated on Apr 2, 2012
+ * Last updated on May 3, 2012
  * 
  */
 package org.dryad.interop;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -23,9 +24,8 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.apache.log4j.Logger;
 import org.dryad.interop.DBConnectionImpl;
 import org.dryad.interop.DBConnection;
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
+import nu.xom.*;
+
 import org.xml.sax.SAXException;
 
 public class NCBILinkoutBuilder {
@@ -44,9 +44,7 @@ public class NCBILinkoutBuilder {
     static final Map<String,String> NCBIDatabaseNames = new HashMap<String,String>(); //name (suffix) -> Abbreviation
     
     static final Map<String,String> doiToPMID = new HashMap<String,String>();
-    
-    static final DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
-    
+        
     static final Logger logger = Logger.getLogger(NCBILinkoutBuilder.class);
     
     /**
@@ -93,7 +91,7 @@ public class NCBILinkoutBuilder {
                         Document d = queryNCBI(query);
                         if (d != null){
                             boolean processResult = processQueryReturn(d, query, pub);
-                            if (processResult){
+                            if (processResult && pub.hasPMIDLinks(pmid)){
                                 hitCount++;
                             }
                         }
@@ -107,48 +105,42 @@ public class NCBILinkoutBuilder {
             }
         }
         //captured everything in a dryad article, now generate the xml linkout file
-        LinkoutTarget target = new LinkoutTarget(builderFactory);
+        LinkoutTarget target = new LinkoutTarget();
         for (Publication pub : publications){
             target.addPublication(pub);
         }
     }
     
     
-    private Document queryNCBI(String query) throws IOException, ParserConfigurationException, SAXException{
-        InputStream s = null;
-        try {
-            URL u = new URL(query);
-            s = u.openStream();
-            DocumentBuilder builder = builderFactory.newDocumentBuilder();
-            Document d = builder.parse(s);
+    private Document queryNCBI(String query) throws  ValidityException, ParsingException, IOException{
+            Builder builder = new Builder();
+            Document d = builder.build(query);
             return d;
-        }
-        finally{
-            if (s != null)
-                    s.close();
-        }
     }
     
     private boolean processQueryReturn(Document d, String query, Publication pub){
-        boolean valid=true;
-        for(Node docChild = d.getFirstChild();docChild != null && valid; docChild=docChild.getNextSibling()){
-            if ("eLinkResult".equals(docChild.getNodeName()) && docChild.hasChildNodes()){
-                valid = processELinkResult(docChild,query,pub);
-            }
+        Element root = d.getRootElement();
+        if (root.getChildCount()>0 && "eLinkResult".equals(root.getLocalName())){
+            return processELinkResult(root,query,pub);
         }
-        return valid;
+        else
+            return false;
     }
     
     
     
     private boolean processELinkResult(Node eLinkElement,String query, Publication pub){
         boolean valid = true;
-        for(Node child = eLinkElement.getFirstChild();child != null; child = child.getNextSibling()){
-            if (child.getNodeType() == Node.TEXT_NODE){
-                //ignore
+        for(int i = 0; i<eLinkElement.getChildCount() && valid; i++){
+            final Node nChild = eLinkElement.getChild(i);
+            if (nChild instanceof Element){
+                Element child = (Element)nChild;
+                if ("LinkSet".equals(child.getLocalName()) && child.getChildCount()>0){
+                    valid = processLinkSetElement(child,query,pub);
+                }
             }
-            else if ("LinkSet".equals(child.getNodeName()) && child.hasChildNodes()){
-                valid = processLinkSetElement(child,query,pub);
+            else if (nChild instanceof Text || nChild instanceof Comment){
+                //ignore
             }
         }
         return valid;
@@ -156,40 +148,41 @@ public class NCBILinkoutBuilder {
     
     private boolean processLinkSetElement(Node linkSetElement, String query, Publication pub){
         boolean valid = true;
-        for(Node child = linkSetElement.getFirstChild();child != null; child = child.getNextSibling()){
-            if (child.getNodeType() == Node.TEXT_NODE){
-                //ignore
-            }
-            else if ("DbFrom".equals(child.getNodeName())){
-                String sourceDB = checkDbFrom(child);
-                if (!"pubmed".equals(sourceDB)){
-                    logger.warn("Source DB is not pubmed..." + query);
-                }
+        for(int i = 0; i<linkSetElement.getChildCount() && valid; i++){
+            final Node nChild = linkSetElement.getChild(i);
+            if (nChild instanceof Element){
+                final Element child = (Element)nChild;
+                if ("DbFrom".equals(child.getLocalName())){
+                    String sourceDB = checkDbFrom(child);
+                    if (!"pubmed".equals(sourceDB)){
+                        logger.warn("Source DB is not pubmed..." + query);
+                    }
                 valid = (sourceDB != null);
+                }
+                else if ("IdList".equals(child.getLocalName())){
+                    valid = checkIdList(child);
+                }
+                else if ("LinkSetDb".equals(child.getLocalName())){
+                    valid = processLinkSetDb(child,query,pub);
+                }
+                else 
+                    System.out.println("LinkSet child name = " + child.getLocalName() + " Child count = " + child.getChildCount()); 
             }
-            else if ("IdList".equals(child.getNodeName())){
-                valid = checkIdList(child);
-            }
-            else if ("LinkSetDb".equals(child.getNodeName())){
-                valid = processLinkSetDb(child,query,pub);
-            }
-            else 
-                System.out.println("LinkSet child name = " + child.getNodeName() + " Child count = " + child.getChildNodes().getLength());            
         }
         return valid;
     }
     
     
     private String checkDbFrom(Node dbFromElement){
-        if (dbFromElement.hasChildNodes()){
-            if (dbFromElement.getChildNodes().getLength()==1){
-                Node child = dbFromElement.getFirstChild();
-                return(child.getTextContent());
+        if (dbFromElement.getChildCount()>=1){
+            if (dbFromElement.getChild(0) instanceof Text){
+                Text child = (Text)dbFromElement.getChild(0);
+                return child.getValue();
             }
-            System.out.println("Bad DbFrom element child count: " + dbFromElement.getChildNodes().getLength());
+            System.out.println("Bad DbFrom element: " + dbFromElement);
             return null;
         }
-        System.out.println("Bad DbFrom element: " + dbFromElement);
+        System.out.println("Bad DbFrom element child count: " + dbFromElement.getChildCount());
         return null;
     }
     
@@ -200,53 +193,57 @@ public class NCBILinkoutBuilder {
     
     private boolean processLinkSetDb(Node linkSetDbElement, String query, Publication pub){
         boolean valid = true;
-        for (Node child = linkSetDbElement.getFirstChild();child != null;child =child.getNextSibling()){
-            if (child.getNodeType() == Node.TEXT_NODE){
-                //ignore
+        for (int i = 0; i<linkSetDbElement.getChildCount() && valid; i++){
+            final Node nChild = linkSetDbElement.getChild(i);
+            if (nChild instanceof Element){
+                final Element child = (Element)nChild;
+                if ("DbTo".equals(child.getLocalName())){
+                    String targetDB = checkDbTo(child);
+                    if (!"pubmed".equals(targetDB))
+                        System.out.println("targetDB: " + targetDB);
+                    valid = (targetDB != null);
+                }
+                else if ("LinkName".equals(child.getLocalName())){
+                    String linkName = checkLinkName(child);
+                    System.out.println("Link Name: " + linkName);
+                    valid = (linkName != null);
+                }
+                else if ("Link".equals(child.getLocalName())){
+
+                }
+                else 
+                    System.out.println("LinkSetDb child name = " + child.getLocalName() + " Child count = " + child.getChildCount());            
             }
-            else if ("DbTo".equals(child.getNodeName())){
-                String targetDB = checkDbTo(child);
-                if (!"pubmed".equals(targetDB))
-                    System.out.println("targetDB: " + targetDB);
-                valid = (targetDB != null);
+            else if (nChild instanceof Text || nChild instanceof Comment){
+            //ignore
             }
-            else if ("LinkName".equals(child.getNodeName())){
-                String linkName = checkLinkName(child);
-                System.out.println("Link Name: " + linkName);
-                valid = (linkName != null);
-            }
-            else if ("Link".equals(child.getNodeName())){
-                
-            }
-            else 
-                System.out.println("LinkSetDb child name = " + child.getNodeName() + " Child count = " + child.getChildNodes().getLength());            
         }
         return valid;
     }
-    
+
     private String checkDbTo(Node dbToElement){
-        if (dbToElement.hasChildNodes()){
-            if (dbToElement.getChildNodes().getLength()==1){
-                Node child = dbToElement.getFirstChild();
-                return(child.getTextContent());
+        if (dbToElement.getChildCount()>= 1){
+            if (dbToElement.getChild(0) instanceof Text){
+                Text child = (Text)dbToElement.getChild(0);
+                return child.getValue();
             }
-            System.out.println("Bad DbTo element child count: " + dbToElement.getChildNodes().getLength());
+            System.out.println("Bad DbTo element: " + dbToElement);
             return null;
         }
-        System.out.println("Bad DbTo element: " + dbToElement);
+        System.out.println("Bad DbTo element child count: " + dbToElement.getChildCount());
         return null;
     }
     
-    private String checkLinkName(Node LinkNameElement){
-        if (LinkNameElement.hasChildNodes()){
-            if (LinkNameElement.getChildNodes().getLength()==1){
-                Node child = LinkNameElement.getFirstChild();
-                return(child.getTextContent());
+    private String checkLinkName(Node linkNameElement){
+        if (linkNameElement.getChildCount()>=1){
+            if (linkNameElement.getChild(0) instanceof Text){
+                Text child = (Text)linkNameElement.getChild(0);
+                return child.getValue();
             }
-            System.out.println("Bad LinkName element child count: " + LinkNameElement.getChildNodes().getLength());
+            System.out.println("Bad LinkName element: " + linkNameElement);
             return null;
         }
-        System.out.println("Bad LinkName element: " + LinkNameElement);
+        System.out.println("Bad LinkName element child count: " + linkNameElement.getChildCount());
         return null;
     }
     
