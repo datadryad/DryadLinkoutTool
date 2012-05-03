@@ -60,6 +60,7 @@ public class DryadArticle {
 
 
     final private Set<String>emptyStringSet = new HashSet<String>();
+
     Set<String> processPubmedXML(URL pubmedURL){
         InputStream source = null;
         try {

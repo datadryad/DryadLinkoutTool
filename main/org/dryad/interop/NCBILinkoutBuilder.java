@@ -108,6 +108,9 @@ public class NCBILinkoutBuilder {
         }
         //captured everything in a dryad article, now generate the xml linkout file
         LinkoutTarget target = new LinkoutTarget(builderFactory);
+        for (DryadArticle art : dryadArticles){
+            target.addArticle(art);
+        }
     }
     
     

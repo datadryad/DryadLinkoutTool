@@ -19,5 +19,16 @@ public class LinkoutTarget {
     
     LinkoutTarget(DocumentBuilderFactory builderFactory) throws ParserConfigurationException{
         targetDocument = builderFactory.newDocumentBuilder().newDocument();
+        
+    }
+
+
+    void addArticle(DryadArticle art) {
+        // TODO Auto-generated method stub
+        
+    }
+    
+    void save(String targetFile){
+        
     }
 }
