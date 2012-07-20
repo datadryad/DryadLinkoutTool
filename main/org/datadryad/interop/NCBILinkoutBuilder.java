@@ -5,34 +5,37 @@
  * Last updated on May 3, 2012
  * 
  */
-package org.dryad.interop;
+package org.datadryad.interop;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
-import org.apache.log4j.Logger;
-import org.dryad.interop.DBConnectionImpl;
-import org.dryad.interop.DBConnection;
-import nu.xom.*;
+import nu.xom.Builder;
+import nu.xom.Comment;
+import nu.xom.Document;
+import nu.xom.Element;
+import nu.xom.Node;
+import nu.xom.ParsingException;
+import nu.xom.Text;
+import nu.xom.ValidityException;
 
-import org.xml.sax.SAXException;
+import org.apache.log4j.Logger;
+import org.datadryad.interop.LinkoutTarget.TargetType;
 
 public class NCBILinkoutBuilder {
 
     DBConnection dbc;
     
     static final String PACKAGECOLLECTIONNAME = "Dryad Data Packages";
+    
+    static final String DEFAULTPUBLINKFILE = "testpublinkout.xml";
+    static final String DEFAULTSEQLINKFILE = "testseqlinkout.xml";
     
     final Set<DryadPackage> dryadPackages = new HashSet<DryadPackage>();
     final Set<Publication> publications = new HashSet<Publication>();
@@ -53,62 +56,105 @@ public class NCBILinkoutBuilder {
      */
     public static void main(String[] args) throws Exception {
         NCBILinkoutBuilder builder = new NCBILinkoutBuilder();
-        builder.process();
+        if (args.length > 2){
+            builder.process(args[1],args[2]);
+        }
+        else
+            builder.process(DEFAULTPUBLINKFILE,DEFAULTSEQLINKFILE);
     }
 
-    private void process() throws Exception{
+    private void process(String publinkFile, String seqlinkFile) throws Exception{
         initNCBIDatabaseCollection();
         dbc = getConnection();
         int noDOI = 0;
         int noPMID = 0;
         DryadPackage.getPackages(dryadPackages,PACKAGECOLLECTIONNAME,dbc);
         for(DryadPackage dpackage : dryadPackages){
-            Set<String>doi_set = dpackage.getPubDOIs();
-            if (doi_set.size() == 0){
+            String doi = dpackage.getPubDOI();
+            if ("".equals(doi)){
                 noDOI++;
+                Publication pub = dpackage.directLookup();  //TODO implement this
+                if (pub !=null){
+                    publications.add(pub);
+                    dpackage.setPublication(pub);
+                }
+                    
             }
             else{
-                for (String doi : doi_set){
-                    Publication pub = new Publication(doi);
-                    publications.add(pub);
-                    pub.lookupPMID();
-                    if (pub.getPMIDs().size() == 0)
-                        noPMID++;
-                }
+                Publication pub = new Publication(doi);
+                publications.add(pub);
+                pub.lookupPMID();
+                if (pub.getPMIDs().size() == 0)
+                    noPMID++;
+                dpackage.setPublication(pub);  //
             }
         }
         logger.info("Found " + dryadPackages.size() + " packages");
-        logger.info("Found " + noDOI + " packages with no DOIs");
-        logger.info("Found " + noPMID + " publications with DOIs that resolved to no PMIDs");
+        logger.info("Found " + noDOI + " packages with no DOI");
+        logger.info("Found " + noPMID + " publications with a DOI that resolved to no PMIDs");
         dbc.disconnect();
+        generatePubLinkout(publinkFile);
+        queryELinkRefs();
+        generateSeqLinkout(seqlinkFile);
+    }
+
+    /**
+     * @throws ValidityException
+     * @throws ParsingException
+     * @throws IOException
+     */
+    private void queryELinkRefs() throws ValidityException, ParsingException, IOException {
         int queryCount = 0;
         int hitCount = 0;
-        for(Publication pub : publications){
-            if (pub.getPMIDs().size() >0){
-                for (String pmid : pub.getPMIDs()){
-                    for (String dbName : NCBIDatabaseNames.keySet()){
-                        String query = NCBIDatabasePrefix + NCBIDatabaseNames.get(dbName) + "&id=" + pmid;
-                        Document d = queryNCBI(query);
-                        if (d != null){
-                            boolean processResult = processQueryReturn(d, query, pub);
-                            if (processResult && pub.hasPMIDLinks(pmid)){
-                                hitCount++;
+        for(DryadPackage pkg : dryadPackages){
+            final Publication pub = pkg.getPub();
+            if (pub != null){
+                if (pub.getPMIDs().size() >0){
+                    for (String pmid : pub.getPMIDs()){
+                        for (String dbName : NCBIDatabaseNames.keySet()){
+                            String query = NCBIDatabasePrefix + NCBIDatabaseNames.get(dbName) + "&id=" + pmid;
+                            Document d = queryNCBI(query);
+                            if (d != null){
+                                boolean processResult = processQueryReturn(d, query, pub);
+                                if (processResult && pub.hasPMIDLinks(pmid) || pub.hasSeqLinks()){
+                                    hitCount++;
+                                }
+                            }
+                            queryCount++;
+                            if (queryCount % 10 == 0){
+                                logger.info("Processed " + queryCount + " queries, with " + hitCount + " returning linklist results");
                             }
                         }
-                        queryCount++;
-                        if (queryCount % 10 == 0){
-                            logger.info("Processed " + queryCount + " queries, with " + hitCount + " returning linklist results");
-                        }
-                        
                     }
                 }
             }
         }
+    }
+
+    /**
+     * @throws ParserConfigurationException
+     * @throws IOException 
+     */
+    private void generatePubLinkout(String targetFile) throws ParserConfigurationException, IOException {
         //captured everything in a dryad article, now generate the xml linkout file
-        LinkoutTarget target = new LinkoutTarget();
-        for (Publication pub : publications){
-            target.addPublication(pub);
+        LinkoutTarget target = new LinkoutTarget(TargetType.PUBLINKS);
+        for (DryadPackage pkg : dryadPackages){
+            target.addPackage(pkg);
         }
+        target.save(targetFile);
+    }
+    
+    /**
+     * @throws ParserConfigurationException
+     * @throws IOException 
+     */
+    private void generateSeqLinkout(String targetFile) throws ParserConfigurationException, IOException {
+        //captured everything in a dryad article, now generate the xml linkout file
+        LinkoutTarget target = new LinkoutTarget(TargetType.SEQUENCELINKS);
+        for (DryadPackage pkg : dryadPackages){
+            target.addPackage(pkg);
+        }
+        target.save(targetFile);
     }
     
     
@@ -193,12 +239,13 @@ public class NCBILinkoutBuilder {
     
     private boolean processLinkSetDb(Node linkSetDbElement, String query, Publication pub){
         boolean valid = true;
+        String targetDB = null;
         for (int i = 0; i<linkSetDbElement.getChildCount() && valid; i++){
             final Node nChild = linkSetDbElement.getChild(i);
             if (nChild instanceof Element){
                 final Element child = (Element)nChild;
                 if ("DbTo".equals(child.getLocalName())){
-                    String targetDB = checkDbTo(child);
+                    targetDB = checkDbTo(child);
                     if (!"pubmed".equals(targetDB))
                         System.out.println("targetDB: " + targetDB);
                     valid = (targetDB != null);
@@ -209,10 +256,14 @@ public class NCBILinkoutBuilder {
                     valid = (linkName != null);
                 }
                 else if ("Link".equals(child.getLocalName())){
-
+                    String idStr = processLinkId(child);
+                    if (targetDB != null)
+                        pub.addSequenceLink(targetDB, idStr);
+                    else
+                        logger.error("No targetDB specified in linkset: " + query);
                 }
                 else 
-                    System.out.println("LinkSetDb child name = " + child.getLocalName() + " Child count = " + child.getChildCount());            
+                    logger.warn("LinkSetDb child name = " + child.getLocalName() + " Child count = " + child.getChildCount());            
             }
             else if (nChild instanceof Text || nChild instanceof Comment){
             //ignore
@@ -247,6 +298,19 @@ public class NCBILinkoutBuilder {
         return null;
     }
     
+    private String processLinkId(Node linkElement){
+        if (linkElement.getChildCount()>=1){
+            if (linkElement.getChild(0) instanceof Text){
+                Text child = (Text)linkElement.getChild(0);
+                return child.getValue();
+            }
+            System.out.println("Bad Id element: " + linkElement);
+            return null;
+        }
+        System.out.println("Bad LinkName element child count: " + linkElement.getChildCount());
+        return null;        
+    }
+    
     
     private DBConnection getConnection(){
         DBConnection result = new DBConnectionImpl();
@@ -260,8 +324,8 @@ public class NCBILinkoutBuilder {
         NCBIDatabaseNames.put("nucleotide","Nucleotide");
         NCBIDatabaseNames.put("est","NucEST");
         NCBIDatabaseNames.put("gss","NucGSS");
-        NCBIDatabaseNames.put("pubmed","PubMed");
         NCBIDatabaseNames.put("protein","Protein");
+        //NCBIDatabaseNames.put("pubmed","PubMed");  //probably don't need pubmed -> pubmed mappings
         NCBIDatabaseNames.put("taxonomy","Taxonomy");
         NCBIDatabaseNames.put("bioproject","BioProject");
     }

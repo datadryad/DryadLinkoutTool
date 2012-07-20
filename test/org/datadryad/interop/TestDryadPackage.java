@@ -5,7 +5,7 @@
  * Last updated on Apr 6, 2012
  * 
  */
-package org.dryad.interop;
+package org.datadryad.interop;
 
 
 import org.junit.After;

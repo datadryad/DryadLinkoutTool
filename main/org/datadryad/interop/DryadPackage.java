@@ -5,7 +5,7 @@
  * Last updated on Apr 6, 2012
  * 
  */
-package org.dryad.interop;
+package org.datadryad.interop;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -20,8 +20,15 @@ public class DryadPackage {
 
     
     int itemid;
-    private Set<String> pubDOIs;
-    
+    private String pubDOI;
+    //if there is no DOI, these fields should be filled to facilitate direct search
+    private String journal;
+    private String date;
+    private String volume;
+    private String issue;
+    private String firstPage;
+    private String authorName;
+    private Publication publication;
     
     static final Logger logger = Logger.getLogger(NCBILinkoutBuilder.class);
 
@@ -57,19 +64,22 @@ public class DryadPackage {
     }
     
     final static String METADATAQUERY = "SELECT text_value FROM metadatavalue WHERE item_id = ? AND metadata_field_id = ?";
-    public static Set<String> getPackagePublicationDOI(int packageItemID, int refbyID, DBConnection dbc) throws SQLException {
+    public static String getPackagePublicationDOI(int packageItemID, int refbyID, DBConnection dbc) throws SQLException {
         final PreparedStatement p = dbc.getConnection().prepareStatement(METADATAQUERY);
-        final Set<String> result = new HashSet<String>();
+        String result;
         p.setInt(1,packageItemID);
         p.setInt(2,refbyID);
         ResultSet rs = p.executeQuery();
-        while (rs.next()){
-            result.add(rs.getString(1));
+        if (rs.next()){
+            result = rs.getString(1);
+            if (rs.next()){
+                String second = rs.getString(1);
+                if (!second.equals(result))
+                    logger.error("Package ID " + packageItemID + " ref by id = " + refbyID + " returned more than one DOI");
+            }
         }
-        for(String ref : result){
-            logger.info("referring id = " + ref);
-        }
-        
+        else
+            result = "";
         return result;
     }
     
@@ -85,18 +95,31 @@ public class DryadPackage {
         ResultSet rs = p.executeQuery();
         while(rs.next()){
             int nextid = rs.getInt(1);
-            Set<String> dois = getPackagePublicationDOI(nextid,referencedByID,dbc);
-            DryadPackage newPackage = new DryadPackage(nextid,dois);
+            String doi = getPackagePublicationDOI(nextid,referencedByID,dbc);
+            DryadPackage newPackage = new DryadPackage(nextid,doi);
             packages.add(newPackage);
         }
     }
 
-    DryadPackage(int id, Set<String> dois){
+    DryadPackage(int id, String doi){
         itemid = id;
-        pubDOIs = dois;
+        pubDOI = doi;
     }
     
-    public Set<String>getPubDOIs(){
-        return pubDOIs;
+    public void setPublication(Publication pub){
+        publication = pub;
+    }
+    
+    public String getPubDOI(){
+        return pubDOI;
+    }
+
+    public Publication directLookup() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    public Publication getPub() {
+        return publication;
     }
 }

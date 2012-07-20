@@ -6,12 +6,12 @@
  * Last updated on Dec 27, 2011
  * 
  */
-package org.dryad.interop;
+package org.datadryad.interop;
 
 import static org.junit.Assert.*;
 
-import org.dryad.interop.DBConnection;
-import org.dryad.interop.DBConnectionImpl;
+import org.datadryad.interop.DBConnection;
+import org.datadryad.interop.DBConnectionImpl;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;

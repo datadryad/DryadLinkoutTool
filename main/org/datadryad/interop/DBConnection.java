@@ -3,7 +3,7 @@
  * Last updated on Feb 17, 2012
  * 
  */
-package org.dryad.interop;
+package org.datadryad.interop;
 
 import java.sql.Connection;
 

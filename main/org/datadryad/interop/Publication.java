@@ -5,7 +5,7 @@
  * Last updated on Apr 6, 2012
  * 
  */
-package org.dryad.interop;
+package org.datadryad.interop;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -14,6 +14,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -34,6 +35,7 @@ public class Publication {
     private String doi;
     private Set<String>pmids;
     private HashMap<String,String> links;
+    private Collection<SequenceRecord> sequenceLinks = new HashSet<SequenceRecord>();
     
     final static String PMIDQUERYURI = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=";
     final static String PMIDQUERYSUFFIX = "[doi]"; 
@@ -54,6 +56,9 @@ public class Publication {
                 lookupURL = new URL(PMIDQUERYURI+doi.substring(4)+PMIDQUERYSUFFIX);
             }
             pmids = processPubmedXML(lookupURL);
+            if (pmids.size() >1){
+                logger.error("Publication " + doi + " has " + pmids.size() + " pmids");
+            }
         } catch (MalformedURLException e) {
             final String message = "Article's DOI " + doi + " could not be parsed into a valid NCBI esearch URL";
             logger.warn(message);
@@ -125,6 +130,15 @@ public class Publication {
     public boolean hasPMIDLinks(String pmid) {
         // TODO Auto-generated method stub
         return false;
+    }
+    
+    public void addSequenceLink(String db, String dbId){
+        final SequenceRecord newLink = new SequenceRecord(db,dbId);
+        sequenceLinks.add(newLink);
+    }
+    
+    public boolean hasSeqLinks(){
+        return !sequenceLinks.isEmpty();
     }
     
 }

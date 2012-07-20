@@ -5,15 +5,15 @@
  * Last updated on Apr 6, 2012
  * 
  */
-package org.dryad.interop;
+package org.datadryad.interop;
 
 import static org.junit.Assert.*;
 
 import java.util.Set;
 
 import org.apache.log4j.Logger;
-import org.dryad.interop.Publication;
-import org.dryad.interop.NCBILinkoutBuilder;
+import org.datadryad.interop.Publication;
+import org.datadryad.interop.NCBILinkoutBuilder;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -70,5 +70,7 @@ public class TestPublication {
         }
         
     }
+    
+    
 
 }
