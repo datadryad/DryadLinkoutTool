@@ -21,7 +21,7 @@ public class DryadPackage {
     
     int itemid;
     private String pubDOI;
-    //if there is no DOI, these fields should be filled to facilitate direct search
+    //TODO if there is no DOI, these fields should be filled to facilitate direct search
     private String journal;
     private String date;
     private String volume;

@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import nu.xom.Builder;
@@ -130,7 +129,7 @@ public class LinkoutTarget {
         if (pub != null){
             Set<String> pmids = pub.getPMIDs();
             for(String pmid : pmids){
-                result.appendChild("ObjId");
+                result.appendChild("ObjId");  //TODO this isn't useful
             }
         }
         return result;
