@@ -8,7 +8,7 @@ package org.datadryad.interop;
 import java.sql.Connection;
 
 public interface DBConnection {
-    String connect();
+    void connect();
     
     String reconnect();
     

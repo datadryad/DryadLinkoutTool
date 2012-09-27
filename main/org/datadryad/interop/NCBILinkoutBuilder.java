@@ -234,7 +234,7 @@ public class NCBILinkoutBuilder {
                     valid = processLinkSetDb(child,query,pub);
                 }
                 else 
-                    System.out.println("LinkSet child name = " + child.getLocalName() + " Child count = " + child.getChildCount()); 
+                    logger.error("LinkSet child name = " + child.getLocalName() + " Child count = " + child.getChildCount()); 
             }
         }
         return valid;
@@ -247,10 +247,10 @@ public class NCBILinkoutBuilder {
                 Text child = (Text)dbFromElement.getChild(0);
                 return child.getValue();
             }
-            System.out.println("Bad DbFrom element: " + dbFromElement);
+            logger.error("Bad DbFrom element: " + dbFromElement);
             return null;
         }
-        System.out.println("Bad DbFrom element child count: " + dbFromElement.getChildCount());
+        logger.error("Bad DbFrom element child count: " + dbFromElement.getChildCount());
         return null;
     }
     
@@ -269,12 +269,12 @@ public class NCBILinkoutBuilder {
                 if ("DbTo".equals(child.getLocalName())){
                     targetDB = checkDbTo(child);
                     if (!"pubmed".equals(targetDB))
-                        System.out.println("targetDB: " + targetDB);
+                        logger.error("targetDB: " + targetDB);
                     valid = (targetDB != null);
                 }
                 else if ("LinkName".equals(child.getLocalName())){
                     String linkName = checkLinkName(child);
-                    System.out.println("Link Name: " + linkName);
+                    logger.error("Link Name: " + linkName);
                     valid = (linkName != null);
                 }
                 else if ("Link".equals(child.getLocalName())){
@@ -300,10 +300,10 @@ public class NCBILinkoutBuilder {
                 Text child = (Text)dbToElement.getChild(0);
                 return child.getValue();
             }
-            System.out.println("Bad DbTo element: " + dbToElement);
+            logger.error("Bad DbTo element: " + dbToElement);
             return null;
         }
-        System.out.println("Bad DbTo element child count: " + dbToElement.getChildCount());
+        logger.error("Bad DbTo element child count: " + dbToElement.getChildCount());
         return null;
     }
     
@@ -313,10 +313,10 @@ public class NCBILinkoutBuilder {
                 Text child = (Text)linkNameElement.getChild(0);
                 return child.getValue();
             }
-            System.out.println("Bad LinkName element: " + linkNameElement);
+            logger.error("Bad LinkName element: " + linkNameElement);
             return null;
         }
-        System.out.println("Bad LinkName element child count: " + linkNameElement.getChildCount());
+        logger.error("Bad LinkName element child count: " + linkNameElement.getChildCount());
         return null;
     }
     
@@ -326,10 +326,10 @@ public class NCBILinkoutBuilder {
                 Text child = (Text)linkElement.getChild(0);
                 return child.getValue();
             }
-            System.out.println("Bad Id element: " + linkElement);
+            logger.error("Bad Id element: " + linkElement);
             return null;
         }
-        System.out.println("Bad LinkName element child count: " + linkElement.getChildCount());
+        logger.error("Bad LinkName element child count: " + linkElement.getChildCount());
         return null;        
     }
     

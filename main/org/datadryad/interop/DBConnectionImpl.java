@@ -1,6 +1,4 @@
 /*
- * Created on Feb 17, 2012
- * Last updated on Feb 17, 2012
  * 
  */
 package org.datadryad.interop;
@@ -10,16 +8,21 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
+import org.apache.log4j.Logger;
+
 public class DBConnectionImpl implements DBConnection{
     private Connection connection;
     private static final String CONNECTION_PROPERTIES_FILENAME = "Connection.properties"; 
 
+    
+    static final Logger logger = Logger.getLogger(DBConnectionImpl.class);
+
     @Override
-    public String connect() {
-        return openDBFromPropertiesFile(CONNECTION_PROPERTIES_FILENAME);
+    public void connect() {
+        openDBFromPropertiesFile(CONNECTION_PROPERTIES_FILENAME);
     }
     
-    public String openDBFromPropertiesFile(String propertyFileSpec){
+    public void openDBFromPropertiesFile(String propertyFileSpec){
         final Properties properties = new Properties();
         try {
             properties.load(this.getClass().getResourceAsStream(propertyFileSpec));
@@ -29,8 +32,7 @@ public class DBConnectionImpl implements DBConnection{
         try {
             Class.forName("org.postgresql.Driver");
         } catch(ClassNotFoundException e){
-            System.err.println("Couldn't load PSQL Driver");
-            e.printStackTrace();
+            logger.error("Couldn't load PSQL Driver",e);
         }
         final String host = properties.getProperty("host");
         final String db = properties.getProperty("db");
@@ -39,12 +41,8 @@ public class DBConnectionImpl implements DBConnection{
         try {
             connection = DriverManager.getConnection(String.format("jdbc:postgresql://%s/%s",host,db),user,password);
         } catch (SQLException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-            return null;
+            logger.error("Connection failedl; host = " + host + "; db = " + "; user = " + user,e);
         }
-        return "Host: " + host + " db: " + db;
-
     }
 
     @Override
