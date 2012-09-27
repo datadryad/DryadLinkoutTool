@@ -42,8 +42,7 @@ public class TestDBConnection {
 
     @Test
     public void testConnect() {
-        String s = testConnection.connect();
-        System.out.println(s); 
+        testConnection.connect();
     }
 
     @Test
