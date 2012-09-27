@@ -41,7 +41,7 @@ public class DBConnectionImpl implements DBConnection{
         try {
             connection = DriverManager.getConnection(String.format("jdbc:postgresql://%s/%s",host,db),user,password);
         } catch (SQLException e) {
-            logger.error("Connection failedl; host = " + host + "; db = " + "; user = " + user,e);
+            logger.error("Connection failed: host = " + host + "; db = " + db + "; user = " + user,e);
         }
     }
 
