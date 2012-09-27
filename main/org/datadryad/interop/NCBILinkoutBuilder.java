@@ -2,7 +2,7 @@
  * NCBI Linkout generator for Dryad
  *
  * Created on Feb 17, 2012
- * Last updated on May 3, 2012
+ * Last updated on July 20, 2012
  * 
  */
 package org.datadryad.interop;
@@ -43,10 +43,21 @@ public class NCBILinkoutBuilder {
     static final String NCBIEntrezPrefix = "";
     
     static final String NCBIDatabasePrefix = "http://www.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&db=";
+
+    static final Map<String,String> doiToPMID = new HashMap<String,String>();
     
     static final Map<String,String> NCBIDatabaseNames = new HashMap<String,String>(); //name (suffix) -> Abbreviation
+    static {
+        NCBIDatabaseNames.put("gene","Gene");
+        NCBIDatabaseNames.put("nucleotide","Nucleotide");
+        NCBIDatabaseNames.put("est","NucEST");
+        NCBIDatabaseNames.put("gss","NucGSS");
+        NCBIDatabaseNames.put("protein","Protein");
+        //NCBIDatabaseNames.put("pubmed","PubMed");  //probably don't need pubmed -> pubmed mappings
+        NCBIDatabaseNames.put("taxonomy","Taxonomy");
+        NCBIDatabaseNames.put("bioproject","BioProject");
+    }
     
-    static final Map<String,String> doiToPMID = new HashMap<String,String>();
         
     static final Logger logger = Logger.getLogger(NCBILinkoutBuilder.class);
     
@@ -63,8 +74,19 @@ public class NCBILinkoutBuilder {
             builder.process(DEFAULTPUBLINKFILE,DEFAULTSEQLINKFILE);
     }
 
+    
+    /**
+     * 1. Gather all dryadpackages from the database
+     * 2. Location the associated publication in NCBI
+     *    a. if no doi specified, lookup the publication using the citation matcher (to be implemented)
+     *    b. if there is a doi, lookup the publication using the doi
+     *    c. if both of these fail the publication is assumed not to be known to NCBI
+     * 3. 
+     * @param publinkFile
+     * @param seqlinkFile
+     * @throws Exception
+     */
     private void process(String publinkFile, String seqlinkFile) throws Exception{
-        initNCBIDatabaseCollection();
         dbc = getConnection();
         int noDOI = 0;
         int noPMID = 0;
@@ -318,16 +340,5 @@ public class NCBILinkoutBuilder {
         return result;
     }
     
-    //could be done statically
-    private void initNCBIDatabaseCollection(){
-        NCBIDatabaseNames.put("gene","Gene");
-        NCBIDatabaseNames.put("nucleotide","Nucleotide");
-        NCBIDatabaseNames.put("est","NucEST");
-        NCBIDatabaseNames.put("gss","NucGSS");
-        NCBIDatabaseNames.put("protein","Protein");
-        //NCBIDatabaseNames.put("pubmed","PubMed");  //probably don't need pubmed -> pubmed mappings
-        NCBIDatabaseNames.put("taxonomy","Taxonomy");
-        NCBIDatabaseNames.put("bioproject","BioProject");
-    }
     
 }

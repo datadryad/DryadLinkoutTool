@@ -55,7 +55,7 @@ public class LinkoutTarget {
         FileOutputStream s = new FileOutputStream(targetFile, false);
         Serializer serializer = new Serializer(s);
         serializer.setIndent(3);
-        serializer.setMaxLength(64);
+        serializer.setMaxLength(72);
         serializer.write(targetDocument);
     }
     
