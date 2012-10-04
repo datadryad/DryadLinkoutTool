@@ -42,8 +42,7 @@
 	<property name="jarsDir" location= "${basedir}/jars"/>
 	<property name="targetDir" location= "${basedir}/targets"/>
 	<property name="buildDir" location= "${basedir}/build"/>
-	<property name="notesDir" location= "${basedir}/../notes"/>
-	<property name="destLinux" location="${targetDir}/Linux"/>
+	<property name="configDir" location= "${basedir}/config"/>
 	<property name="version" value="0.1"/>
 	<path id="project.all.jars">
 		<pathelement location="${jarsDir}/log4j-1.2.15.jar"/>
@@ -81,15 +80,16 @@
 		destdir="${buildDir}"
 		debug="on"
 		source="1.5"
-		target="1.5">
+		target="1.5"
+		includeantruntime="false">
 			<classpath refid="project.all.jars"/>
 		</javac>
-		<copy tofile="${buildDir}/org/datadryad/interop/connection.properties" file="${notesDir}/private/connection.properties"/>
-		<copy tofile="${buildDir}/org/datadryad/interop/testConnection.properties" file="${notesDir}/private/testConnection.properties"/>
-		<copy tofile="${buildDir}/log4j.properties" file="${notesDir}/log4j.properties"/>
+		<copy tofile="${buildDir}/org/datadryad/interop/connection.properties" file="${configDir}/connection.properties"/>
+		<copy tofile="${buildDir}/org/datadryad/interop/testConnection.properties" file="${configDir}/testConnection.properties"/>
+		<copy tofile="${configDir}/log4j.properties" file="${configDir}/log4j.properties"/>
 	</target>
 	
-	<target name="build" description="builds for Linux"
+	<target name="build" description="builds for Unix type (OSX,Linux) systems"
 		depends="compile-main">	
 	</target>
 	
