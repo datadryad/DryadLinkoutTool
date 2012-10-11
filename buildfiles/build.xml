@@ -34,7 +34,7 @@
      ====================================================================== -->
 <project name="DryadLinkoutBuilder" default="buildAll" basedir="..">
     <description>
-            This is the main build file for the Query application on all platforms.
+            This is the main build file for the standalone NCBI linkout file generator on all platforms.
     </description>
 	<property name="sourceDir" location="${basedir}/src/main"/>
 	<property name="sourceLib" location="${sourceDir}/lib"/>
