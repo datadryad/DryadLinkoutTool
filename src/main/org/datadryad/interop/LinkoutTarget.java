@@ -10,6 +10,9 @@ package org.datadryad.interop;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -30,7 +33,8 @@ public class LinkoutTarget {
     final static String DTDROOTELEMENT = "LinkSet";
     final static String DTDPUBLICID = "-//NLM//DTD LinkOut 1.0//EN";
     final static String DTDURL = "http://www.ncbi.nlm.nih.gov/entrez/linkout/doc/LinkOut.dtd";
-    
+
+    final static SimpleDateFormat DATEF = new SimpleDateFormat("yyyy-mm-dd");
     
     final Set <DryadPackage> packages = new HashSet<DryadPackage>();
     
@@ -49,7 +53,7 @@ public class LinkoutTarget {
     void save(String targetFile) throws IOException{
         FileOutputStream s = new FileOutputStream(targetFile, false);
         OutputStreamWriter w = new OutputStreamWriter(s);
-        w.append("<?xml version=" + '"' + "1.0" + '"' + "encoding=" + '"' + "UTF-8" + '"' + "?>\n");
+        w.append("<?xml version=" + '"' + "1.0" + '"' + " encoding=" + '"' + "UTF-8" + '"' + "?>\n");
         w.append("<!DOCTYPE " + DTDROOTELEMENT + " PUBLIC ");
         w.append('"' + DTDPUBLICID + '"');
         w.append(" " + '"' + DTDURL + '"' + ">\n");
@@ -61,36 +65,20 @@ public class LinkoutTarget {
     private String generateLinkSet(){
         StringBuilder result = new StringBuilder(500*packages.size());
         result.append("<" + DTDROOTELEMENT + ">\n");
-        for (DryadPackage pkg : packages){
-            if (pkg.getPubDOI().length()>0){  //this is temporary, until we can lookup things in pubmed from metadata
-                if (!pkg.getPub().getPMIDs().isEmpty()){  //this should be caught upstream somewhere...
-                    result.append(generateComment(pkg));
-                    result.append(generateLink(pkg));
-                }
-            }
-        }
+        result.append(generateLink());
         result.append("</" + DTDROOTELEMENT + ">\n");       
         return result.toString();
     }
     
-    private String generateComment(DryadPackage pkg){
-        StringBuilder result = new StringBuilder(100);
-        result.append(getIndent(1));
-        result.append("<!-- Link for publication: ");
-        result.append(pkg.getPubDOI());
-        result.append("-->\n");
-        return result.toString();
-    }
-    
-    private String generateLink(DryadPackage pkg){
+    private String generateLink(){
         StringBuilder result = new StringBuilder(500);
         result.append(getIndent(1));        
         result.append("<Link>\n");
         result.append(generateLinkId());
         result.append(generateProviderId());
         result.append(generateIconUrl());
-        result.append(generateObjectSelector(pkg));
-        result.append(generateObjectUrl(pkg));
+        result.append(generateObjectSelector());
+        result.append(generateObjectUrl());
         result.append(getIndent(1));        
         result.append("</Link>\n");
         return result.toString();
@@ -105,7 +93,7 @@ public class LinkoutTarget {
             result.append("dryad.pubmed.");
         else
             result.append("dryad.seq.");
-        result.append(".yyyy-mm-dd");
+        result.append(DATEF.format(new Date()));
         result.append("</LinkId>\n");
         return result.toString();
     }
@@ -130,17 +118,20 @@ public class LinkoutTarget {
     
     
     //TODO what a package that has references from multiple databases
-    private String generateObjectSelector(DryadPackage pkg){
+    private String generateObjectSelector(){
         StringBuilder result = new StringBuilder(300);
+        
         result.append(getIndent(2));
         result.append("<ObjectSelector>\n");
-        result.append(generateDatabase(pkg));
-        result.append(generateObjectList(pkg));
+        result.append(generateDatabase());
+        result.append(generateObjectList());
+
+        result.append(getIndent(2));
         result.append("</ObjectSelector>\n");
         return result.toString();
     }
     
-    String generateDatabase(DryadPackage pkg){
+    String generateDatabase(){
         StringBuilder result = new StringBuilder(30);
         result.append(getIndent(3));
         result.append("<Database>");
@@ -154,16 +145,25 @@ public class LinkoutTarget {
         return result.toString();
     }
     
-    private String generateObjectList(DryadPackage pkg){
+    private String generateObjectList(){
         StringBuilder result = new StringBuilder(120);
         result.append(getIndent(3));
         result.append("<ObjectList>\n");
-        final Publication pub = pkg.getPub();
-        if (pub != null){
-            Set<String> pmids = pub.getPMIDs();
-            for(String pmid : pmids){
-                String objIdElement = generateObjIdElement(pmid);
-                result.append(objIdElement);
+        for (DryadPackage pkg : packages){
+            if (pkg.getPubDOI().length()>0){  //this is temporary, until we can lookup things in pubmed from metadata
+                if (!pkg.getPub().getPMIDs().isEmpty()){  //this should be caught upstream somewhere...
+                    final Publication pub = pkg.getPub();
+                    if (pub != null){
+                        Set<String> pmids = pub.getPMIDs();
+                        for(String pmid : pmids){
+                            String objIdElement = generateObjIdElement(pmid);
+                            result.append(objIdElement);
+                            result.append("  <!-- ");
+                            result.append(pkg.getPubDOI());
+                            result.append(" -->\n");
+                        }
+                    }
+                }
             }
         }
         result.append(getIndent(3));
@@ -177,13 +177,13 @@ public class LinkoutTarget {
         result.append(getIndent(4));
         result.append("<ObjId>");
         result.append(dbId);
-        result.append("</ObjId>\n");
+        result.append("</ObjId>");
         return result.toString();
     }
     
     
     
-    private String generateObjectUrl(DryadPackage pkg){
+    private String generateObjectUrl(){
         StringBuilder result = new StringBuilder(120);
         result.append(getIndent(2));
         result.append("<ObjectUrl>\n");
