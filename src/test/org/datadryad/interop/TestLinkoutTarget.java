@@ -9,7 +9,6 @@
 package org.datadryad.interop;
 
 
-import org.datadryad.interop.LinkoutTarget.TargetType;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -33,8 +32,8 @@ public class TestLinkoutTarget {
 
     @Before
     public void setUp() throws Exception {
-        testPubTarget = new LinkoutTarget(TargetType.PUBLINKS);
-        testSequenceTarget = new LinkoutTarget(TargetType.SEQUENCELINKS);
+        testPubTarget = new PubMedTarget();
+        testSequenceTarget = new OtherTarget();
         testPackage1 = new DryadPackage(0, null);
         testPackage2 = new DryadPackage(1, null);
         
