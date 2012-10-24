@@ -26,7 +26,6 @@ import nu.xom.Text;
 import nu.xom.ValidityException;
 
 import org.apache.log4j.Logger;
-import org.datadryad.interop.LinkoutTarget.TargetType;
 
 public class NCBILinkoutBuilder {
 
@@ -53,7 +52,6 @@ public class NCBILinkoutBuilder {
         NCBIDatabaseNames.put("est","NucEST");
         NCBIDatabaseNames.put("gss","NucGSS");
         NCBIDatabaseNames.put("protein","Protein");
-        //NCBIDatabaseNames.put("pubmed","PubMed");  //probably don't need pubmed -> pubmed mappings
         NCBIDatabaseNames.put("taxonomy","Taxonomy");
         NCBIDatabaseNames.put("bioproject","BioProject");
     }
@@ -66,7 +64,7 @@ public class NCBILinkoutBuilder {
      * @throws SQLException 
      */
     public static void main(String[] args) throws Exception {
-        NCBILinkoutBuilder builder = new NCBILinkoutBuilder();
+        final NCBILinkoutBuilder builder = new NCBILinkoutBuilder();
         if (args.length > 2){
             builder.process(args[1],args[2]);
         }
@@ -88,32 +86,31 @@ public class NCBILinkoutBuilder {
      */
     private void process(String publinkFile, String seqlinkFile) throws Exception{
         dbc = getConnection();
-        int noDOI = 0;
-        int noPMID = 0;
+        int doiCount = 0;
+        int pmidCount = 0;
         DryadPackage.getPackages(dryadPackages,PACKAGECOLLECTIONNAME,dbc);
         for(DryadPackage dpackage : dryadPackages){
-            String doi = dpackage.getPubDOI();
+            final String doi = dpackage.getPubDOI();
             if ("".equals(doi)){
-                noDOI++;
+                doiCount++;
                 Publication pub = dpackage.directLookup();  //TODO implement this
                 if (pub !=null){
                     publications.add(pub);
                     dpackage.setPublication(pub);
                 }
-                    
             }
             else{
                 Publication pub = new Publication(doi);
                 publications.add(pub);
                 pub.lookupPMID();
                 if (pub.getPMIDs().size() == 0)
-                    noPMID++;
+                    pmidCount++;
                 dpackage.setPublication(pub);  //
             }
         }
         logger.info("Found " + dryadPackages.size() + " packages");
-        logger.info("Found " + noDOI + " packages with no DOI");
-        logger.info("Found " + noPMID + " publications with a DOI that resolved to no PMIDs");
+        logger.info("Found " + doiCount + " packages with no DOI");
+        logger.info("Found " + pmidCount + " publications with a DOI that resolved to no PMIDs");
         dbc.disconnect();
         generatePubLinkout(publinkFile);
         queryELinkRefs();
@@ -134,8 +131,8 @@ public class NCBILinkoutBuilder {
                 if (pub.getPMIDs().size() >0){
                     for (String pmid : pub.getPMIDs()){
                         for (String dbName : NCBIDatabaseNames.keySet()){
-                            String query = NCBIDatabasePrefix + NCBIDatabaseNames.get(dbName) + "&id=" + pmid;
-                            Document d = queryNCBI(query);
+                            final String query = NCBIDatabasePrefix + NCBIDatabaseNames.get(dbName) + "&id=" + pmid;
+                            final Document d = queryNCBI(query);
                             if (d != null){
                                 boolean processResult = processQueryReturn(d, query, pub);
                                 if (processResult && pub.hasPMIDLinks(pmid) || pub.hasSeqLinks()){
@@ -143,7 +140,7 @@ public class NCBILinkoutBuilder {
                                 }
                             }
                             queryCount++;
-                            if (queryCount % 10 == 0){
+                            if (queryCount % 100 == 0){
                                 logger.info("Processed " + queryCount + " queries, with " + hitCount + " returning linklist results");
                             }
                         }
@@ -159,7 +156,7 @@ public class NCBILinkoutBuilder {
      */
     private void generatePubLinkout(String targetFile) throws ParserConfigurationException, IOException {
         //captured everything in a dryad article, now generate the xml linkout file
-        LinkoutTarget target = new LinkoutTarget(TargetType.PUBLINKS);
+        final LinkoutTarget target = new PubMedTarget();
         for (DryadPackage pkg : dryadPackages){
             target.addPackage(pkg);
         }
@@ -172,7 +169,7 @@ public class NCBILinkoutBuilder {
      */
     private void generateSeqLinkout(String targetFile) throws ParserConfigurationException, IOException {
         //captured everything in a dryad article, now generate the xml linkout file
-        LinkoutTarget target = new LinkoutTarget(TargetType.SEQUENCELINKS);
+        final LinkoutTarget target = new OtherTarget();
         for (DryadPackage pkg : dryadPackages){
             target.addPackage(pkg);
         }
@@ -181,13 +178,12 @@ public class NCBILinkoutBuilder {
     
     
     private Document queryNCBI(String query) throws  ValidityException, ParsingException, IOException{
-            Builder builder = new Builder();
-            Document d = builder.build(query);
-            return d;
+        final Builder builder = new Builder();
+        return builder.build(query);
     }
-    
+
     private boolean processQueryReturn(Document d, String query, Publication pub){
-        Element root = d.getRootElement();
+        final Element root = d.getRootElement();
         if (root.getChildCount()>0 && "eLinkResult".equals(root.getLocalName())){
             return processELinkResult(root,query,pub);
         }
@@ -202,14 +198,11 @@ public class NCBILinkoutBuilder {
         for(int i = 0; i<eLinkElement.getChildCount() && valid; i++){
             final Node nChild = eLinkElement.getChild(i);
             if (nChild instanceof Element){
-                Element child = (Element)nChild;
+                final Element child = (Element)nChild;
                 if ("LinkSet".equals(child.getLocalName()) && child.getChildCount()>0){
                     valid = processLinkSetElement(child,query,pub);
                 }
-            }
-            else if (nChild instanceof Text || nChild instanceof Comment){
-                //ignore
-            }
+            }  //otherwise ignore
         }
         return valid;
     }
@@ -221,7 +214,7 @@ public class NCBILinkoutBuilder {
             if (nChild instanceof Element){
                 final Element child = (Element)nChild;
                 if ("DbFrom".equals(child.getLocalName())){
-                    String sourceDB = checkDbFrom(child);
+                    final String sourceDB = checkDbFrom(child);
                     if (!"pubmed".equals(sourceDB)){
                         logger.warn("Source DB is not pubmed..." + query);
                     }
@@ -244,7 +237,7 @@ public class NCBILinkoutBuilder {
     private String checkDbFrom(Node dbFromElement){
         if (dbFromElement.getChildCount()>=1){
             if (dbFromElement.getChild(0) instanceof Text){
-                Text child = (Text)dbFromElement.getChild(0);
+                final Text child = (Text)dbFromElement.getChild(0);
                 return child.getValue();
             }
             logger.error("Bad DbFrom element: " + dbFromElement);
@@ -269,16 +262,16 @@ public class NCBILinkoutBuilder {
                 if ("DbTo".equals(child.getLocalName())){
                     targetDB = checkDbTo(child);
                     if (!"pubmed".equals(targetDB))
-                        logger.error("targetDB: " + targetDB);
+                        logger.info("targetDB: " + targetDB);
                     valid = (targetDB != null);
                 }
                 else if ("LinkName".equals(child.getLocalName())){
-                    String linkName = checkLinkName(child);
-                    logger.error("Link Name: " + linkName);
+                    final String linkName = checkLinkName(child);
+                    logger.info("Link Name: " + linkName);
                     valid = (linkName != null);
                 }
                 else if ("Link".equals(child.getLocalName())){
-                    String idStr = processLinkId(child);
+                    final String idStr = processLinkId(child);
                     if (targetDB != null)
                         pub.addSequenceLink(targetDB, idStr);
                     else
@@ -286,10 +279,7 @@ public class NCBILinkoutBuilder {
                 }
                 else 
                     logger.warn("LinkSetDb child name = " + child.getLocalName() + " Child count = " + child.getChildCount());            
-            }
-            else if (nChild instanceof Text || nChild instanceof Comment){
-            //ignore
-            }
+            }  //else ignore
         }
         return valid;
     }
@@ -297,8 +287,7 @@ public class NCBILinkoutBuilder {
     private String checkDbTo(Node dbToElement){
         if (dbToElement.getChildCount()>= 1){
             if (dbToElement.getChild(0) instanceof Text){
-                Text child = (Text)dbToElement.getChild(0);
-                return child.getValue();
+                return ((Text)dbToElement.getChild(0)).getValue();
             }
             logger.error("Bad DbTo element: " + dbToElement);
             return null;
@@ -310,8 +299,7 @@ public class NCBILinkoutBuilder {
     private String checkLinkName(Node linkNameElement){
         if (linkNameElement.getChildCount()>=1){
             if (linkNameElement.getChild(0) instanceof Text){
-                Text child = (Text)linkNameElement.getChild(0);
-                return child.getValue();
+                return ((Text)linkNameElement.getChild(0)).getValue();
             }
             logger.error("Bad LinkName element: " + linkNameElement);
             return null;
@@ -321,10 +309,14 @@ public class NCBILinkoutBuilder {
     }
     
     private String processLinkId(Node linkElement){
-        if (linkElement.getChildCount()>=1){
-            if (linkElement.getChild(0) instanceof Text){
-                Text child = (Text)linkElement.getChild(0);
-                return child.getValue();
+        if (linkElement.getChildCount()>=2){
+            if (linkElement.getChild(1) instanceof Element){
+                final Element child = (Element)linkElement.getChild(1);
+                if (child.getChild(0) instanceof Text){
+                    return ((Text)child.getChild(0)).getValue();
+                }
+                logger.error("Bad Id element: " + linkElement);
+                return null;
             }
             logger.error("Bad Id element: " + linkElement);
             return null;

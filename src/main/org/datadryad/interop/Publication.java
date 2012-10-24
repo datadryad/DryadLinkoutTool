@@ -34,8 +34,7 @@ public class Publication {
     
     private String doi;
     private Set<String>pmids;
-    private HashMap<String,String> links;
-    private Collection<SequenceRecord> sequenceLinks = new HashSet<SequenceRecord>();
+    private HashMap<String,Set<SequenceRecord>> sequenceLinks = new HashMap<String,Set<SequenceRecord>>();
     
     final static String PMIDQUERYURI = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=";
     final static String PMIDQUERYSUFFIX = "[doi]"; 
@@ -110,7 +109,7 @@ public class Publication {
     private Set<String> processPubMedIDNodes(NodeList nl){
         final Set<String> result = new HashSet<String>();
         for (int i=0;i<nl.getLength();i++){
-            Node idItem = nl.item(i);
+            final Node idItem = nl.item(i);
             final String content = idItem.getTextContent();
             if (content != null && content.length()>4)
                 result.add(content);
@@ -134,11 +133,27 @@ public class Publication {
     
     public void addSequenceLink(String db, String dbId){
         final SequenceRecord newLink = new SequenceRecord(db,dbId);
-        sequenceLinks.add(newLink);
+        if (sequenceLinks.containsKey(db)){
+            final Set<SequenceRecord> s = sequenceLinks.get(db);
+            s.add(newLink);
+        }
+        else {
+            final Set<SequenceRecord> s = new HashSet<SequenceRecord>();
+            sequenceLinks.put(db, s);
+            s.add(newLink);
+        }
     }
     
     public boolean hasSeqLinks(){
         return !sequenceLinks.isEmpty();
+    }
+    
+    public Set<String> getSeqDBs(){
+        return sequenceLinks.keySet();
+    }
+    
+    public Collection<SequenceRecord> getSeqLinksforDB(String db){
+        return sequenceLinks.get(db);
     }
     
 }

@@ -2,7 +2,7 @@
  * NCBI Linkout generator for Dryad
  * 
  * Created on Apr 4, 2012
- * Last updated on Apr 6, 2012
+ * Last updated on Oct 24, 2012
  * 
  */
 package org.datadryad.interop;
@@ -11,7 +11,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.HashSet;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
