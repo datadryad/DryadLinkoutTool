@@ -33,8 +33,8 @@ public class NCBILinkoutBuilder {
     
     static final String PACKAGECOLLECTIONNAME = "Dryad Data Packages";
     
-    static final String DEFAULTPUBLINKFILE = "testpublinkout.xml";
-    static final String DEFAULTSEQLINKFILE = "testseqlinkout.xml";
+    static final String DEFAULTPUBLINKFILE = "pubmedlinkout.xml";
+    static final String DEFAULTSEQLINKFILE = "sequencelinkout.xml";
     
     final Set<DryadPackage> dryadPackages = new HashSet<DryadPackage>();
     final Set<Publication> publications = new HashSet<Publication>();
