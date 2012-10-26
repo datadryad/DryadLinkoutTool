@@ -75,9 +75,9 @@ public class NCBILinkoutBuilder {
     
     /**
      * 1. Gather all dryadpackages from the database
-     * 2. Location the associated publication in NCBI
-     *    a. if no doi specified, lookup the publication using the citation matcher (to be implemented)
-     *    b. if there is a doi, lookup the publication using the doi
+     * 2. Locate the associated publication in NCBI
+     *    a. if there is a doi, lookup the publication using the doi
+     *    b. if no doi specified, lookup the publication using the citation matcher (to be implemented?) - Maybe not (10/12/2012)
      *    c. if both of these fail the publication is assumed not to be known to NCBI
      * 3. 
      * @param publinkFile
@@ -247,6 +247,7 @@ public class NCBILinkoutBuilder {
         return null;
     }
     
+    //TODO: This should either be implemented or removed
     private boolean checkIdList(Node idListElement){
         return true;
     }
