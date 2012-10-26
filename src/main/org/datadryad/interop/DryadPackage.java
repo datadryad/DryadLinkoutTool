@@ -19,7 +19,8 @@ public class DryadPackage {
 
     
     int itemid;
-    private String pubDOI;
+    private String publicationDOI;
+    private String packageDOI;
     //TODO if there is no DOI, these fields should be filled to facilitate direct search
     private String journal;
     private String date;
@@ -48,6 +49,7 @@ public class DryadPackage {
         }
     }
     
+
     final static String REFERENCEDBYQUERY = "SELECT metadata_field_id FROM metadatafieldregistry WHERE element='relation' AND qualifier='isreferencedby'";
     static int getIsReferencedByID(DBConnection dbc) throws SQLException{
         Statement s = dbc.getConnection().createStatement();
@@ -61,20 +63,35 @@ public class DryadPackage {
             throw new RuntimeException(message);
         }
     }
+
     
+    final static String IDENTIFIERQUERY = "SELECT metadata_field_id FROM metadatafieldregistry WHERE element='identifier' AND qualifier IS NULL";
+    static int getIdentiferID(DBConnection dbc) throws SQLException{
+        Statement s = dbc.getConnection().createStatement();
+        ResultSet rs = s.executeQuery(IDENTIFIERQUERY);
+        if (rs.next()){
+            return rs.getInt(1);
+        }
+        else {
+            final String message = "Could not retrieve metadata type 'dc:indentifier' from metadatafieldregistry";
+            logger.fatal(message);
+            throw new RuntimeException(message);
+        }
+    }
+
     final static String METADATAQUERY = "SELECT text_value FROM metadatavalue WHERE item_id = ? AND metadata_field_id = ?";
-    public static String getPackagePublicationDOI(int packageItemID, int refbyID, DBConnection dbc) throws SQLException {
+    public static String getPackageDOI(int packageItemID, int relationID, DBConnection dbc) throws SQLException {
         final PreparedStatement p = dbc.getConnection().prepareStatement(METADATAQUERY);
         String result;
         p.setInt(1,packageItemID);
-        p.setInt(2,refbyID);
+        p.setInt(2,relationID);
         ResultSet rs = p.executeQuery();
         if (rs.next()){
             result = rs.getString(1);
             if (rs.next()){
                 String second = rs.getString(1);
                 if (!second.equals(result))
-                    logger.error("Package ID " + packageItemID + " ref by id = " + refbyID + " returned more than one DOI");
+                    logger.error("Package ID " + packageItemID + " ref by id = " + relationID + " returned more than one DOI");
             }
         }
         else
@@ -88,21 +105,25 @@ public class DryadPackage {
     public static void getPackages(Set<DryadPackage> packages, String packageCollectionName, DBConnection dbc) throws SQLException {
         final int packageCollectionID = getPackageCollectionID(packageCollectionName,dbc);
         final int referencedByID = getIsReferencedByID(dbc);
+        final int identifierID = getIdentiferID(dbc);
         logger.info("dc:relation:isreferencedby = " + referencedByID);
+        logger.info("dc:identifier = " + identifierID);
         PreparedStatement p = dbc.getConnection().prepareStatement(PACKAGEITEMQUERY);
         p.setInt(1, packageCollectionID);
         ResultSet rs = p.executeQuery();
         while(rs.next()){
             int nextid = rs.getInt(1);
-            String doi = getPackagePublicationDOI(nextid,referencedByID,dbc);
-            DryadPackage newPackage = new DryadPackage(nextid,doi);
+            String pub = getPackageDOI(nextid,referencedByID,dbc);
+            String myDoi = getPackageDOI(nextid,identifierID,dbc);
+            DryadPackage newPackage = new DryadPackage(nextid,pub,myDoi);
             packages.add(newPackage);
         }
     }
 
-    DryadPackage(int id, String doi){
+    DryadPackage(int id, String pub, String pkgDOI){
         itemid = id;
-        pubDOI = doi;
+        publicationDOI = pub;
+        packageDOI = pkgDOI;
     }
     
     public void setPublication(Publication pub){
@@ -110,8 +131,13 @@ public class DryadPackage {
     }
     
     public String getPubDOI(){
-        return pubDOI;
+        return publicationDOI;
     }
+    
+    public String getDOI(){
+        return packageDOI;
+    }
+   
 
     public Publication directLookup() {
         // TODO Auto-generated method stub

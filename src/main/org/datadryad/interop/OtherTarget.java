@@ -14,6 +14,9 @@ import java.util.Date;
  */
 public class OtherTarget extends LinkoutTarget {
     
+    
+    final static String RESOURCEBASE = "http://datadryad.org/resource/";
+
     private int linkCount = 0;
     
     String generateLinkSet(){
@@ -101,13 +104,21 @@ public class OtherTarget extends LinkoutTarget {
         return result.toString();
     }
 
+    String generateBase(){
+        StringBuilder result = new StringBuilder(30);
+        result.append(getIndent(3));
+        result.append("<Base>");
+        result.append(RESOURCEBASE);
+        result.append("</Base>\n");
+        return result.toString();
+    }
+
     
     String generateRule(DryadPackage pkg){
         final StringBuilder result = new StringBuilder(30);
         result.append(getIndent(3));
         result.append("<Rule>");
-        result.append("query=");
-        result.append(pkg.getPubDOI());
+        result.append(pkg.getDOI());
         result.append("</Rule>\n");
         return result.toString();
     }

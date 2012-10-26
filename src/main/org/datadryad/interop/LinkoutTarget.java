@@ -95,15 +95,7 @@ public abstract class LinkoutTarget {
     }
     
     
-        
-    String generateBase(){
-        StringBuilder result = new StringBuilder(30);
-        result.append(getIndent(3));
-        result.append("<Base>");
-        result.append(DRYADBASE);
-        result.append("</Base>\n");
-        return result.toString();
-    }
+    abstract String generateBase();   
     
     final private static String indents = "     ";
     String getIndent(int indentCount){
