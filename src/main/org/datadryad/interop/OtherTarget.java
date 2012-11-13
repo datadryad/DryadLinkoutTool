@@ -23,14 +23,9 @@ public class OtherTarget extends LinkoutTarget {
         final StringBuilder result = new StringBuilder(500*packages.size());
         result.append("<" + DTDROOTELEMENT + ">\n");
         for (DryadPackage pkg : packages){
-            if (pkg.getPubDOI().length()>0){  //this is temporary, until we can lookup things in pubmed from metadata
-                final Publication pub = pkg.getPub();
-                if (pub != null){
-                    if (pub.hasSeqLinks()){                           
-                        for (String dbName : pub.getSeqDBs()){
-                            result.append(generateLink(pkg,dbName,generateProviderId(),generateIconUrl()));
-                        }
-                    }
+            if (pkg.hasSeqLinks()){                           
+                for (String dbName : pkg.getSeqDBs()){
+                    result.append(generateLink(pkg,dbName,generateProviderId(),generateIconUrl()));
                 }
             }
         }
@@ -83,7 +78,7 @@ public class OtherTarget extends LinkoutTarget {
         final StringBuilder result = new StringBuilder(120);
         result.append(getIndent(3));
         result.append("<ObjectList>\n");
-        for (SequenceRecord sr : pkg.getPub().getSeqLinksforDB(db)){
+        for (SequenceRecord sr : pkg.getSeqLinksforDB(db)){
             result.append(generateObjIdElement(sr.getID()));
             result.append("\n");   //insert xml comment here??
         }

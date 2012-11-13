@@ -7,15 +7,38 @@
  */
 package org.datadryad.interop;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Set;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
 import org.apache.log4j.Logger;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
+import org.xml.sax.helpers.DefaultHandler;
 
 public class DryadPackage {
+
+    
+    private Set<String>pmids = new HashSet<String>();
+    private HashMap<String,Set<SequenceRecord>> sequenceLinks = new HashMap<String,Set<SequenceRecord>>();
+    
+    final static String PMIDQUERYURI = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=";
+    final static String PMIDQUERYSUFFIX = "[doi]"; 
 
     
     int itemid;
@@ -28,7 +51,6 @@ public class DryadPackage {
     private String issue;
     private String firstPage;
     private String authorName;
-    private Publication publication;
     
     static final Logger logger = Logger.getLogger(NCBILinkoutBuilder.class);
 
@@ -126,9 +148,6 @@ public class DryadPackage {
         packageDOI = pkgDOI;
     }
     
-    public void setPublication(Publication pub){
-        publication = pub;
-    }
     
     public String getPubDOI(){
         return publicationDOI;
@@ -139,12 +158,121 @@ public class DryadPackage {
     }
    
 
-    public Publication directLookup() {
-        // TODO Auto-generated method stub
-        return null;
+
+    public void lookupPMID() {
+        try {
+            URL lookupURL;
+            if (publicationDOI.charAt(4) == ' '){
+                lookupURL = new URL(PMIDQUERYURI+publicationDOI.substring(5)+PMIDQUERYSUFFIX);                
+            }
+            else {
+                lookupURL = new URL(PMIDQUERYURI+publicationDOI.substring(4)+PMIDQUERYSUFFIX);
+            }
+            pmids = processPubmedXML(lookupURL);
+            if (pmids.size() >1){
+                logger.error("Publication " + publicationDOI + " has " + pmids.size() + " pmids");
+            }
+        } catch (MalformedURLException e) {
+            final String message = "Article's DOI " + publicationDOI + " could not be parsed into a valid NCBI esearch URL";
+            logger.warn(message);
+        }
     }
 
-    public Publication getPub() {
-        return publication;
+    
+    final private Set<String>emptyStringSet = new HashSet<String>();
+
+    Set<String> processPubmedXML(URL pubmedURL){
+        InputStream source = null;
+        try {
+            source = pubmedURL.openStream();
+            DocumentBuilderFactory f = DocumentBuilderFactory.newInstance();
+            f.setNamespaceAware(true);
+            DocumentBuilder db = f.newDocumentBuilder();
+            db.setErrorHandler(new DefaultHandler());
+            Document d = db.parse(source);
+            NodeList countNodes = d.getElementsByTagNameNS("","Count");
+            if (countNodes.getLength() == 0){
+                logger.warn("No id's found for " + publicationDOI);
+                return emptyStringSet;
+            }
+            NodeList idList = d.getElementsByTagNameNS("", "IdList");
+            return processPubMedIDNodes(idList);
+        } catch (ParserConfigurationException e) {
+            logger.fatal("Error in initializing parser");
+            e.printStackTrace();
+            return emptyStringSet;
+        } catch (SAXException e) {
+            logger.warn("Error in parsing XML returned by " + pubmedURL + "; skipping article");
+            logger.warn("Exception message is: " + e.getLocalizedMessage());
+            return emptyStringSet;
+        } catch (IOException e) {
+            logger.warn("Error opening stream for URL: " + pubmedURL + "; skipping article");
+            return emptyStringSet;
+        } 
+        finally{
+            if (source != null)
+                try {
+                    source.close();
+                } catch (IOException e) {
+                    logger.fatal("Error closing URL Stream");
+                    throw new RuntimeException("This shouldn't be happening");
+                }
+        }
     }
+ 
+    private Set<String> processPubMedIDNodes(NodeList nl){
+        final Set<String> result = new HashSet<String>();
+        for (int i=0;i<nl.getLength();i++){
+            final Node idItem = nl.item(i);
+            final String content = idItem.getTextContent();
+            if (content != null && content.length()>4)
+                result.add(content);
+        }
+        return result;
+        
+    }
+
+    public Set<String>getPMIDs(){
+        return pmids;
+    }
+
+    public boolean hasPMIDLinks(String pmid) {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
+    public void addSequenceLink(String db, String dbId){
+        final SequenceRecord newLink = new SequenceRecord(db,dbId);
+        if (sequenceLinks.containsKey(db)){
+            final Set<SequenceRecord> s = sequenceLinks.get(db);
+            s.add(newLink);
+        }
+        else {
+            final Set<SequenceRecord> s = new HashSet<SequenceRecord>();
+            sequenceLinks.put(db, s);
+            s.add(newLink);
+        }
+    }
+    
+
+    
+    public boolean hasSeqLinks(){
+        return !sequenceLinks.isEmpty();
+    }
+    
+    public Set<String> getSeqDBs(){
+        return sequenceLinks.keySet();
+    }
+    
+    public Collection<SequenceRecord> getSeqLinksforDB(String db){
+        return sequenceLinks.get(db);
+    }
+
+
+    public void directLookup() {
+        // TODO Auto-generated method stub
+        
+    }
+
+    
 }

@@ -93,17 +93,14 @@ public class PubMedTarget extends LinkoutTarget {
         result.append("<ObjectList>\n");
         for (DryadPackage pkg : packages){
             if (pkg.getPubDOI().length()>0){  //this is temporary, until we can lookup things in pubmed from metadata
-                if (!pkg.getPub().getPMIDs().isEmpty()){  //this should be caught upstream somewhere...
-                    final Publication pub = pkg.getPub();
-                    if (pub != null){
-                        Set<String> pmids = pub.getPMIDs();
-                        for(String pmid : pmids){
-                            String objIdElement = generateObjIdElement(pmid);
-                            result.append(objIdElement);
-                            result.append("  <!-- ");
-                            result.append(pkg.getPubDOI());
-                            result.append(" -->\n");
-                        }
+                if (!pkg.getPMIDs().isEmpty()){  //this should be caught upstream somewhere...
+                    Set<String> pmids = pkg.getPMIDs();
+                    for(String pmid : pmids){
+                        String objIdElement = generateObjIdElement(pmid);
+                        result.append(objIdElement);
+                        result.append("  <!-- ");
+                        result.append(pkg.getPubDOI());
+                        result.append(" -->\n");
                     }
                 }
             }

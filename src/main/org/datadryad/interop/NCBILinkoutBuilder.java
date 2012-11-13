@@ -37,7 +37,7 @@ public class NCBILinkoutBuilder {
     static final String DEFAULTSEQLINKFILE = "sequencelinkout.xml";
     
     final Set<DryadPackage> dryadPackages = new HashSet<DryadPackage>();
-    final Set<Publication> publications = new HashSet<Publication>();
+    //final Set<Publication> publications = new HashSet<Publication>();
     
     static final String NCBIEntrezPrefix = "";
     
@@ -93,19 +93,12 @@ public class NCBILinkoutBuilder {
             final String doi = dpackage.getPubDOI();
             if ("".equals(doi)){
                 doiCount++;
-                Publication pub = dpackage.directLookup();  //TODO implement this
-                if (pub !=null){
-                    publications.add(pub);
-                    dpackage.setPublication(pub);
-                }
+                dpackage.directLookup();  //TODO implement this
             }
             else{
-                Publication pub = new Publication(doi);
-                publications.add(pub);
-                pub.lookupPMID();
-                if (pub.getPMIDs().size() == 0)
+                dpackage.lookupPMID();
+                if (dpackage.getPMIDs().size() != 0)
                     pmidCount++;
-                dpackage.setPublication(pub);  //
             }
         }
         logger.info("Found " + dryadPackages.size() + " packages");
@@ -126,24 +119,19 @@ public class NCBILinkoutBuilder {
         int queryCount = 0;
         int hitCount = 0;
         for(DryadPackage pkg : dryadPackages){
-            final Publication pub = pkg.getPub();
-            if (pub != null){
-                if (pub.getPMIDs().size() >0){
-                    for (String pmid : pub.getPMIDs()){
-                        for (String dbName : NCBIDatabaseNames.keySet()){
-                            final String query = NCBIDatabasePrefix + NCBIDatabaseNames.get(dbName) + "&id=" + pmid;
-                            final Document d = queryNCBI(query);
-                            if (d != null){
-                                boolean processResult = processQueryReturn(d, query, pub);
-                                if (processResult && pub.hasPMIDLinks(pmid) || pub.hasSeqLinks()){
-                                    hitCount++;
-                                }
-                            }
-                            queryCount++;
-                            if (queryCount % 100 == 0){
-                                logger.info("Processed " + queryCount + " queries, with " + hitCount + " returning linklist results");
-                            }
+            for (String pmid : pkg.getPMIDs()){
+                for (String dbName : NCBIDatabaseNames.keySet()){
+                    final String query = NCBIDatabasePrefix + NCBIDatabaseNames.get(dbName) + "&id=" + pmid;
+                    final Document d = queryNCBI(query);
+                    if (d != null){
+                        boolean processResult = processQueryReturn(d, query, pkg);
+                        if (processResult && pkg.hasPMIDLinks(pmid) || pkg.hasSeqLinks()){
+                            hitCount++;
                         }
+                    }
+                    queryCount++;
+                    if (queryCount % 100 == 0){
+                        logger.info("Processed " + queryCount + " queries, with " + hitCount + " returning linklist results");
                     }
                 }
             }
@@ -182,10 +170,10 @@ public class NCBILinkoutBuilder {
         return builder.build(query);
     }
 
-    private boolean processQueryReturn(Document d, String query, Publication pub){
+    private boolean processQueryReturn(Document d, String query, DryadPackage pkg){
         final Element root = d.getRootElement();
         if (root.getChildCount()>0 && "eLinkResult".equals(root.getLocalName())){
-            return processELinkResult(root,query,pub);
+            return processELinkResult(root,query,pkg);
         }
         else
             return false;
@@ -193,21 +181,21 @@ public class NCBILinkoutBuilder {
     
     
     
-    private boolean processELinkResult(Node eLinkElement,String query, Publication pub){
+    private boolean processELinkResult(Node eLinkElement,String query, DryadPackage pkg){
         boolean valid = true;
         for(int i = 0; i<eLinkElement.getChildCount() && valid; i++){
             final Node nChild = eLinkElement.getChild(i);
             if (nChild instanceof Element){
                 final Element child = (Element)nChild;
                 if ("LinkSet".equals(child.getLocalName()) && child.getChildCount()>0){
-                    valid = processLinkSetElement(child,query,pub);
+                    valid = processLinkSetElement(child,query,pkg);
                 }
             }  //otherwise ignore
         }
         return valid;
     }
     
-    private boolean processLinkSetElement(Node linkSetElement, String query, Publication pub){
+    private boolean processLinkSetElement(Node linkSetElement, String query, DryadPackage pkg){
         boolean valid = true;
         for(int i = 0; i<linkSetElement.getChildCount() && valid; i++){
             final Node nChild = linkSetElement.getChild(i);
@@ -224,7 +212,7 @@ public class NCBILinkoutBuilder {
                     valid = checkIdList(child);
                 }
                 else if ("LinkSetDb".equals(child.getLocalName())){
-                    valid = processLinkSetDb(child,query,pub);
+                    valid = processLinkSetDb(child,query,pkg);
                 }
                 else 
                     logger.error("LinkSet child name = " + child.getLocalName() + " Child count = " + child.getChildCount()); 
@@ -253,7 +241,7 @@ public class NCBILinkoutBuilder {
     }
     
     
-    private boolean processLinkSetDb(Node linkSetDbElement, String query, Publication pub){
+    private boolean processLinkSetDb(Node linkSetDbElement, String query, DryadPackage pkg){
         boolean valid = true;
         String targetDB = null;
         for (int i = 0; i<linkSetDbElement.getChildCount() && valid; i++){
@@ -274,7 +262,7 @@ public class NCBILinkoutBuilder {
                 else if ("Link".equals(child.getLocalName())){
                     final String idStr = processLinkId(child);
                     if (targetDB != null)
-                        pub.addSequenceLink(targetDB, idStr);
+                        pkg.addSequenceLink(targetDB, idStr);
                     else
                         logger.error("No targetDB specified in linkset: " + query);
                 }
