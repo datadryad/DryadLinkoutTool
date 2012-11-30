@@ -34,8 +34,8 @@ public class TestLinkoutTarget {
     public void setUp() throws Exception {
         testPubTarget = new PubMedTarget();
         testSequenceTarget = new OtherTarget();
-        testPackage1 = new DryadPackage(0, null,null);
-        testPackage2 = new DryadPackage(1, null,null);
+        testPackage1 = new DryadPackage(0, null,null,null);
+        testPackage2 = new DryadPackage(1, null,null,null);
         
         testPubTarget.addPackage(testPackage1);
         testPubTarget.addPackage(testPackage2);

@@ -11,13 +11,17 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -39,11 +43,16 @@ public class DryadPackage {
     
     final static String PMIDQUERYURI = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=";
     final static String PMIDQUERYSUFFIX = "[doi]"; 
+    final static String DRYADDOIPREFIX = "doi:10.5061/dryad";
+    final static String DRYADHTTPPREFIX = "http://dx.doi.org/10.5061/dryad";
+    final static String DOIPREFIX = "doi:";
+    final static String HTTPDOIPREFIX = "http://dx.doi.org/";
 
     
     int itemid;
-    private String publicationDOI;
-    private String packageDOI;
+    private String publicationDOI = null;
+    private String publicationPMID = null;
+    private String packageDOI = null;
     //TODO if there is no DOI, these fields should be filled to facilitate direct search
     private String journal;
     private String date;
@@ -102,22 +111,16 @@ public class DryadPackage {
     }
 
     final static String METADATAQUERY = "SELECT text_value FROM metadatavalue WHERE item_id = ? AND metadata_field_id = ?";
-    public static String getPackageDOI(int packageItemID, int relationID, DBConnection dbc) throws SQLException {
+    public static Set<String> queryMetaData(int packageItemID, int relationID, DBConnection dbc) throws SQLException {
         final PreparedStatement p = dbc.getConnection().prepareStatement(METADATAQUERY);
-        String result;
+        final Set<String>result = new HashSet<String>();
         p.setInt(1,packageItemID);
         p.setInt(2,relationID);
         ResultSet rs = p.executeQuery();
-        if (rs.next()){
-            result = rs.getString(1);
-            if (rs.next()){
-                String second = rs.getString(1);
-                if (!second.equals(result))
-                    logger.error("Package ID " + packageItemID + " ref by id = " + relationID + " returned more than one DOI");
-            }
+        while (rs.next()){
+            final String nextString = rs.getString(1);
+            result.add(nextString);
         }
-        else
-            result = "";
         return result;
     }
     
@@ -134,17 +137,42 @@ public class DryadPackage {
         p.setInt(1, packageCollectionID);
         ResultSet rs = p.executeQuery();
         while(rs.next()){
-            int nextid = rs.getInt(1);
-            String pub = getPackageDOI(nextid,referencedByID,dbc);
-            String myDoi = getPackageDOI(nextid,identifierID,dbc);
-            DryadPackage newPackage = new DryadPackage(nextid,pub,myDoi);
+            final int nextid = rs.getInt(1);
+            final Set<String> identifiers = queryMetaData(nextid,identifierID,dbc);
+            final Set<String> myPubIDs = queryMetaData(nextid,referencedByID,dbc);
+            String myDoi = null;
+            for (String doiCandidate: identifiers){
+                if (doiCandidate.startsWith(DRYADDOIPREFIX) || doiCandidate.startsWith(DRYADHTTPPREFIX)){
+                    if (myDoi == null){
+                        myDoi = doiCandidate;
+                    }
+                    else {
+                        logger.warn("package has multiple doi identifiers: " + myDoi + ", " + doiCandidate);
+                    }
+                }
+            }
+            if (myDoi == null){
+                //logger.warn("package has no doi identifier");
+            }
+            String pubDOI = null;
+            String pubPMID = null;
+            for (String pubId : myPubIDs){
+                if (pubId.contains("PMID")){
+                    pubPMID = pubId;
+                }
+                if (pubId.startsWith(DOIPREFIX) || pubId.startsWith(HTTPDOIPREFIX)){
+                    pubDOI = pubId;
+                }
+            }
+            DryadPackage newPackage = new DryadPackage(nextid,pubDOI,pubPMID,myDoi);
             packages.add(newPackage);
         }
     }
 
-    DryadPackage(int id, String pub, String pkgDOI){
+    DryadPackage(int id, String pubDOI, String pubPMID,String pkgDOI){
         itemid = id;
-        publicationDOI = pub;
+        publicationDOI = pubDOI;
+        publicationPMID = pubPMID;
         packageDOI = pkgDOI;
     }
     
@@ -159,7 +187,10 @@ public class DryadPackage {
    
 
 
-    public void lookupPMID() {
+    public void lookupPMID(DBConnection dbc) {
+        if (publicationPMID != null){
+            return;  //got one already, assume it's good
+        }
         try {
             URL lookupURL;
             if (publicationDOI.charAt(4) == ' '){
@@ -170,11 +201,23 @@ public class DryadPackage {
             }
             pmids = processPubmedXML(lookupURL);
             if (pmids.size() >1){
-                logger.error("Publication " + publicationDOI + " has " + pmids.size() + " pmids");
+                logger.debug("Publication " + publicationDOI + " has " + pmids.size() + " pmids");
+            }
+            if (pmids.size() == 0){
+                logger.debug("Publication " + publicationDOI + " has 0 pmids");
+            }
+            else {
+                Iterator<String> pmidIt = pmids.iterator();
+                publicationPMID = "PMID:" + pmidIt.next();
+                final int referenced_by_id = getIsReferencedByID(dbc);
+                insertMetaData(itemid,referenced_by_id,dbc);
             }
         } catch (MalformedURLException e) {
             final String message = "Article's DOI " + publicationDOI + " could not be parsed into a valid NCBI esearch URL";
             logger.warn(message);
+        } catch (SQLException e) {
+            final String message = "Error while trying to add PMID to metadata for " + publicationDOI;
+            logger.error(message,e);
         }
     }
 
@@ -232,6 +275,18 @@ public class DryadPackage {
         
     }
 
+    
+    final static String METADATAINSERT = "INSERT INTO metadatavalue (item_id,metadata_field_id,text_value,place) VALUES(?,?,?,?)";
+    public void insertMetaData(int packageItemID, int relationID, DBConnection dbc) throws SQLException {
+        final PreparedStatement p = dbc.getConnection().prepareStatement(METADATAINSERT);
+        logger.info("Inserting PMID " + publicationPMID + " for " + packageDOI);
+        p.setInt(1, itemid);
+        p.setInt(2, relationID);
+        p.setString(3, publicationPMID);
+        p.setInt(4,2);  //PMID is a 'secondary' identifier
+        p.executeUpdate();
+    }
+    
     public Set<String>getPMIDs(){
         return pmids;
     }
@@ -268,7 +323,22 @@ public class DryadPackage {
         return sequenceLinks.get(db);
     }
 
+    public boolean hasDOI(){
+        return packageDOI != null && packageDOI != "";
+    }
+    
+    public boolean hasPubDOI(){
+        return publicationDOI != null && publicationDOI != "";
+    }
 
+    public boolean hasPMID(){
+        return publicationPMID != null && publicationPMID.startsWith("PMID:");
+    }
+    
+    public String getPubPMID(){
+        return publicationPMID.substring("PMID:".length());
+    }
+    
     public void directLookup() {
         // TODO Auto-generated method stub
         

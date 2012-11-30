@@ -22,8 +22,8 @@ public abstract class LinkoutTarget {
     final static int INDENTSIZE = 3;
     
     final static String ICONURL = "http://www.nescent.org/wg/dryad/images/7/7f/DryadLogo-Button.png";
-    final static String DRYADBASE = "http://datadryad.org/discover?";
-    final static String DRYADRULE = "query=" + "&lo.doi;";
+    final static String DISCOVERBASE = "http://datadryad.org/discover?";
+    final static String DISCOVERRULE = "query=" + "%22&lo.doi;%22";
     final static String DTDROOTELEMENT = "LinkSet";
     final static String DTDPUBLICID = "-//NLM//DTD LinkOut 1.0//EN";
     final static String DTDURL = "http://www.ncbi.nlm.nih.gov/entrez/linkout/doc/LinkOut.dtd";
@@ -42,19 +42,8 @@ public abstract class LinkoutTarget {
     
     
     //NCBI seems to require query=&lo.doi;" which isn't really legal xml, so xom is out...
-    void save(String targetFile) throws IOException{
-        FileOutputStream s = new FileOutputStream(targetFile, false);
-        final OutputStreamWriter w = new OutputStreamWriter(s);
-        w.append("<?xml version=" + '"' + "1.0" + '"' + " encoding=" + '"' + "UTF-8" + '"' + "?>\n");
-        w.append("<!DOCTYPE " + DTDROOTELEMENT + " PUBLIC ");
-        w.append('"' + DTDPUBLICID + '"');
-        w.append(" " + '"' + DTDURL + '"' + ">\n");
-        final String root = generateLinkSet();
-        w.append(root);
-        w.close();
-    }
+    abstract void save(String targetFile) throws IOException;
 
-    abstract String generateLinkSet();
     
     String generateProviderId(){
         StringBuilder result = new StringBuilder(60);
@@ -83,7 +72,9 @@ public abstract class LinkoutTarget {
         return result.toString();
     }
 
-    
+    String generateSubjectType(){
+        return getIndent(3)+"<SubjectType>supplemental materials</SubjectType>\n";
+    }
     
     protected String generateObjIdElement(String dbId){
         StringBuilder result = new StringBuilder(40);

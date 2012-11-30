@@ -7,10 +7,26 @@
  */
 package org.datadryad.interop;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.Date;
 import java.util.Set;
 
 public class PubMedTarget extends LinkoutTarget {
+
+    
+    void save(String targetFile) throws IOException{
+        FileOutputStream s = new FileOutputStream(targetFile + ".xml", false);
+        final OutputStreamWriter w = new OutputStreamWriter(s);
+        w.append("<?xml version=" + '"' + "1.0" + '"' + " encoding=" + '"' + "UTF-8" + '"' + "?>\n");
+        w.append("<!DOCTYPE " + DTDROOTELEMENT + " PUBLIC ");
+        w.append('"' + DTDPUBLICID + '"');
+        w.append(" " + '"' + DTDURL + '"' + ">\n");
+        final String root = generateLinkSet();
+        w.append(root);
+        w.close();
+    }
 
     String generateLinkSet(){
         final StringBuilder result = new StringBuilder(500*packages.size());
@@ -50,18 +66,14 @@ public class PubMedTarget extends LinkoutTarget {
         result.append("<ObjectUrl>\n");
         result.append(generateBase());
         result.append(generateRule());
+        result.append(generateSubjectType());
         result.append(getIndent(2));
         result.append("</ObjectUrl>\n");
         return result.toString();
     }
 
     String generateRule(){
-        final StringBuilder result = new StringBuilder(30);
-        result.append(getIndent(3));
-        result.append("<Rule>");
-        result.append(DRYADRULE);
-        result.append("</Rule>\n");
-        return result.toString();
+        return getIndent(3) + "<Rule>" + DISCOVERRULE + "</Rule>\n";
     }
     
 
@@ -78,12 +90,7 @@ public class PubMedTarget extends LinkoutTarget {
 
     
     String generateBase(){
-        StringBuilder result = new StringBuilder(30);
-        result.append(getIndent(3));
-        result.append("<Base>");
-        result.append(DRYADBASE);
-        result.append("</Base>\n");
-        return result.toString();
+        return getIndent(3) + "<Base>" + DISCOVERBASE + "</Base>\n";
     }
 
     
@@ -92,16 +99,13 @@ public class PubMedTarget extends LinkoutTarget {
         result.append(getIndent(3));
         result.append("<ObjectList>\n");
         for (DryadPackage pkg : packages){
-            if (pkg.getPubDOI().length()>0){  //this is temporary, until we can lookup things in pubmed from metadata
-                if (!pkg.getPMIDs().isEmpty()){  //this should be caught upstream somewhere...
-                    Set<String> pmids = pkg.getPMIDs();
-                    for(String pmid : pmids){
-                        String objIdElement = generateObjIdElement(pmid);
-                        result.append(objIdElement);
-                        result.append("  <!-- ");
-                        result.append(pkg.getPubDOI());
-                        result.append(" -->\n");
-                    }
+            if (pkg.hasDOI()){  //this is temporary, until we can lookup things in pubmed from metadata
+                if (pkg.hasPMID()){  //this should be caught upstream somewhere...
+                    final String objIdElement = generateObjIdElement(pkg.getPubPMID());
+                    result.append(objIdElement);
+                    result.append("  <!-- ");
+                    result.append(pkg.getPubDOI());
+                    result.append(" -->\n");
                 }
             }
         }

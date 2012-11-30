@@ -33,8 +33,8 @@ public class NCBILinkoutBuilder {
     
     static final String PACKAGECOLLECTIONNAME = "Dryad Data Packages";
     
-    static final String DEFAULTPUBLINKFILE = "pubmedlinkout.xml";
-    static final String DEFAULTSEQLINKFILE = "sequencelinkout.xml";
+    static final String DEFAULTPUBLINKFILE = "pubmedlinkout";
+    static final String DEFAULTSEQLINKFILE = "sequencelinkout";
     
     final Set<DryadPackage> dryadPackages = new HashSet<DryadPackage>();
     //final Set<Publication> publications = new HashSet<Publication>();
@@ -90,13 +90,12 @@ public class NCBILinkoutBuilder {
         int pmidCount = 0;
         DryadPackage.getPackages(dryadPackages,PACKAGECOLLECTIONNAME,dbc);
         for(DryadPackage dpackage : dryadPackages){
-            final String doi = dpackage.getPubDOI();
-            if ("".equals(doi)){
+            if (!dpackage.hasPubDOI()){
                 doiCount++;
                 dpackage.directLookup();  //TODO implement this
             }
             else{
-                dpackage.lookupPMID();
+                dpackage.lookupPMID(dbc);
                 if (dpackage.getPMIDs().size() != 0)
                     pmidCount++;
             }
@@ -119,7 +118,8 @@ public class NCBILinkoutBuilder {
         int queryCount = 0;
         int hitCount = 0;
         for(DryadPackage pkg : dryadPackages){
-            for (String pmid : pkg.getPMIDs()){
+            if (pkg.hasPMID()){
+                final String pmid = pkg.getPubPMID();
                 for (String dbName : NCBIDatabaseNames.keySet()){
                     final String query = NCBIDatabasePrefix + NCBIDatabaseNames.get(dbName) + "&id=" + pmid;
                     final Document d = queryNCBI(query);
@@ -137,6 +137,7 @@ public class NCBILinkoutBuilder {
             }
         }
     }
+
 
     /**
      * @throws ParserConfigurationException
@@ -156,7 +157,7 @@ public class NCBILinkoutBuilder {
      * @throws IOException 
      */
     private void generateSeqLinkout(String targetFile) throws ParserConfigurationException, IOException {
-        //captured everything in a dryad article, now generate the xml linkout file
+        //captured everything in a dryad article, now generate a series of xml linkout files
         final LinkoutTarget target = new OtherTarget();
         for (DryadPackage pkg : dryadPackages){
             target.addPackage(pkg);
