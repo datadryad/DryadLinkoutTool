@@ -191,7 +191,8 @@ public class DryadPackage {
         if (publicationPMID != null){
             return;  //got one already, assume it's good
         }
-        try {
+        //otherwise if the publicationPMID was not set when the package was loaded by getPackages, try querying NCBI using the doi
+        try { 
             URL lookupURL;
             if (publicationDOI.charAt(4) == ' '){
                 lookupURL = new URL(PMIDQUERYURI+publicationDOI.substring(5)+PMIDQUERYSUFFIX);                
