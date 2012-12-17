@@ -45,9 +45,10 @@
 	<property name="configDir" location= "${basedir}/config"/>
 	<property name="version" value="0.1"/>
 	<path id="project.all.jars">
+		<pathelement location="${jarsDir}/commons-lang-2.2.jar"/>
 		<pathelement location="${jarsDir}/log4j-1.2.15.jar"/>
 		<pathelement location="${jarsDir}/junit-4.8.2.jar"/>
-		<pathelement location="${jarsDir}/postgresql-9.1-901.jdbc4.jar"/>
+		<pathelement location="${jarsDir}/postgresql-9.0-802.jdbc4.jar"/>
 		<pathelement location="${jarsDir}/xom-1.2.7.jar"/>
 	</path>
 	<path id="test.classpath">
@@ -84,7 +85,7 @@
 		includeantruntime="false">
 			<classpath refid="project.all.jars"/>
 		</javac>
-		<copy tofile="${buildDir}/org/datadryad/interop/connection.properties" file="${configDir}/connection.properties"/>
+		<copy tofile="${buildDir}/org/datadryad/interop/Connection.properties" file="${configDir}/Connection.properties"/>
 		<copy tofile="${buildDir}/org/datadryad/interop/testConnection.properties" file="${configDir}/testConnection.properties"/>
 		<copy tofile="${configDir}/log4j.properties" file="${configDir}/log4j.properties"/>
 	</target>
