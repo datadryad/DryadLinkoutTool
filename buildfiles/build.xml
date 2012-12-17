@@ -48,7 +48,7 @@
 		<pathelement location="${jarsDir}/commons-lang-2.2.jar"/>
 		<pathelement location="${jarsDir}/log4j-1.2.15.jar"/>
 		<pathelement location="${jarsDir}/junit-4.8.2.jar"/>
-		<pathelement location="${jarsDir}/postgresql-9.1-901.jdbc4.jar"/>
+		<pathelement location="${jarsDir}/postgresql-9.0-802.jdbc4.jar"/>
 		<pathelement location="${jarsDir}/xom-1.2.7.jar"/>
 	</path>
 	<path id="test.classpath">
