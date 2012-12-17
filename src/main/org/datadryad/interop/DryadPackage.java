@@ -82,7 +82,7 @@ public class DryadPackage {
     
 
     final static String REFERENCEDBYQUERY = "SELECT metadata_field_id FROM metadatafieldregistry WHERE element='relation' AND qualifier='isreferencedby'";
-    static int getIsReferencedByID(DBConnection dbc) throws SQLException{
+    static int getIsReferencedByFieldCode(DBConnection dbc) throws SQLException{
         Statement s = dbc.getConnection().createStatement();
         ResultSet rs = s.executeQuery(REFERENCEDBYQUERY);
         if (rs.next()){
@@ -97,7 +97,7 @@ public class DryadPackage {
 
     
     final static String IDENTIFIERQUERY = "SELECT metadata_field_id FROM metadatafieldregistry WHERE element='identifier' AND qualifier IS NULL";
-    static int getIdentiferID(DBConnection dbc) throws SQLException{
+    static int getIdentiferFieldCode(DBConnection dbc) throws SQLException{
         Statement s = dbc.getConnection().createStatement();
         ResultSet rs = s.executeQuery(IDENTIFIERQUERY);
         if (rs.next()){
@@ -129,17 +129,17 @@ public class DryadPackage {
     final static String PACKAGEITEMQUERY = "SELECT item_id FROM collection2item WHERE collection_id = ?";
     public static void getPackages(Set<DryadPackage> packages, String packageCollectionName, DBConnection dbc) throws SQLException {
         final int packageCollectionID = getPackageCollectionID(packageCollectionName,dbc);
-        final int referencedByID = getIsReferencedByID(dbc);
-        final int identifierID = getIdentiferID(dbc);
-        logger.info("dc:relation:isreferencedby = " + referencedByID);
-        logger.info("dc:identifier = " + identifierID);
+        final int referencedByFieldCode = getIsReferencedByFieldCode(dbc);
+        final int identifierFieldCode = getIdentiferFieldCode(dbc);
+        logger.info("dc:relation:isreferencedby = " + referencedByFieldCode);
+        logger.info("dc:identifier = " + identifierFieldCode);
         PreparedStatement p = dbc.getConnection().prepareStatement(PACKAGEITEMQUERY);
         p.setInt(1, packageCollectionID);
         ResultSet rs = p.executeQuery();
         while(rs.next()){
             final int nextid = rs.getInt(1);
-            final Set<String> identifiers = queryMetaData(nextid,identifierID,dbc);
-            final Set<String> myPubIDs = queryMetaData(nextid,referencedByID,dbc);
+            final Set<String> identifiers = queryMetaData(nextid,identifierFieldCode,dbc);
+            final Set<String> myPubIDs = queryMetaData(nextid,referencedByFieldCode,dbc);  //this is every identifier linked to the package using referenedBy; doi's and PMIDs
             String myDoi = null;
             for (String doiCandidate: identifiers){
                 if (doiCandidate.startsWith(DRYADDOIPREFIX) || doiCandidate.startsWith(DRYADHTTPPREFIX)){
@@ -157,7 +157,7 @@ public class DryadPackage {
             String pubDOI = null;
             String pubPMID = null;
             for (String pubId : myPubIDs){
-                if (pubId.contains("PMID")){
+                if (pubId.startsWith("PMID") || pubId.startsWith("pmid")){
                     pubPMID = pubId;
                 }
                 if (pubId.startsWith(DOIPREFIX) || pubId.startsWith(HTTPDOIPREFIX)){
@@ -209,7 +209,7 @@ public class DryadPackage {
             else {
                 Iterator<String> pmidIt = pmids.iterator();
                 publicationPMID = "PMID:" + pmidIt.next();
-                final int referenced_by_id = getIsReferencedByID(dbc);
+                final int referenced_by_id = getIsReferencedByFieldCode(dbc);
                 insertMetaData(itemid,referenced_by_id,dbc);
             }
         } catch (MalformedURLException e) {
