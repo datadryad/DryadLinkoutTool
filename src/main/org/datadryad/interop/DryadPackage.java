@@ -208,8 +208,16 @@ public class DryadPackage {
                 logger.debug("Publication " + publicationDOI + " has 0 pmids");
             }
             else {
-                Iterator<String> pmidIt = pmids.iterator();
-                publicationPMID = "PMID:" + pmidIt.next();
+                final String rawPMID = pmids.iterator().next();  //get the first element of a what should be a singleton collection
+                if (rawPMID.startsWith("PMID")){
+                    publicationPMID = rawPMID;
+                }
+                else if (rawPMID.startsWith("pmid")){
+                    publicationPMID = "PMID" + rawPMID.substring("pmid".length());
+                }
+                else{
+                    publicationPMID = "PMID:" + rawPMID;
+                }
                 final int referenced_by_id = getIsReferencedByFieldCode(dbc);
                 insertMetaData(itemid,referenced_by_id,dbc);
             }
@@ -278,15 +286,33 @@ public class DryadPackage {
 
     
     final static String METADATAINSERT = "INSERT INTO metadatavalue (item_id,metadata_field_id,text_value,place) VALUES(?,?,?,?)";
-    public void insertMetaData(int packageItemID, int relationID, DBConnection dbc) throws SQLException {
+    public void insertMetaData(int packageItemId, int relationFieldCode, DBConnection dbc) throws SQLException {
         final PreparedStatement p = dbc.getConnection().prepareStatement(METADATAINSERT);
-        logger.info("Inserting PMID " + publicationPMID + " for " + packageDOI);
-        p.setInt(1, itemid);
-        p.setInt(2, relationID);
+        final int place = getMaxPlaceValue(packageItemId, relationFieldCode, dbc)+1;
+        logger.info("Inserting PMID " + publicationPMID + " for " + packageDOI + " in place " + place);
+        p.setInt(1, packageItemId);
+        p.setInt(2, relationFieldCode);
         p.setString(3, publicationPMID);
-        p.setInt(4,2);  //PMID is a 'secondary' identifier
+        p.setInt(4,place);
         p.executeUpdate();
     }
+    
+    final static String METADATAPLACEQUERY = "SELECT place FROM metadatavalue WHERE item_id = ? AND metadata_field_id = ?";
+    private int getMaxPlaceValue(int packageItemId, int relationFieldCode,DBConnection dbc) throws SQLException {
+        final PreparedStatement p = dbc.getConnection().prepareStatement(METADATAPLACEQUERY);
+        p.setInt(1, packageItemId);
+        p.setInt(2, relationFieldCode);
+        ResultSet rs = p.executeQuery();
+        int maxPlace = 0;
+        while(rs.next()){
+            int place = rs.getInt(1);
+            if (place>maxPlace){
+                maxPlace = place;
+            }
+        }
+        return maxPlace;
+    }
+    
     
     public Set<String>getPMIDs(){
         return pmids;
