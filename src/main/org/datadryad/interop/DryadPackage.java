@@ -201,13 +201,9 @@ public class DryadPackage {
                 lookupURL = new URL(PMIDQUERYURI+publicationDOI.substring(4)+PMIDQUERYSUFFIX);
             }
             pmids = processPubmedXML(lookupURL);
-            if (pmids.size() >1){
-                logger.debug("Publication " + publicationDOI + " has " + pmids.size() + " pmids");
-            }
-            if (pmids.size() == 0){
-                logger.debug("Publication " + publicationDOI + " has 0 pmids");
-            }
-            else {
+            String plural = pmids.size() == 1 ? "" : "s";
+            logger.debug("Publication " + publicationDOI + " has " + pmids.size() + " pmid" + plural);
+            if (pmids.size() > 0) {
                 final String rawPMID = pmids.iterator().next();  //get the first element of a what should be a singleton collection
                 if (rawPMID.startsWith("PMID")){
                     publicationPMID = rawPMID;
