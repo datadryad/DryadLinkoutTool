@@ -297,18 +297,15 @@ public class DryadPackage {
         p.executeUpdate();
     }
     
-    final static String METADATAPLACEQUERY = "SELECT place FROM metadatavalue WHERE item_id = ? AND metadata_field_id = ?";
-    private int getMaxPlaceValue(int packageItemId, int relationFieldCode,DBConnection dbc) throws SQLException {
+    final static String METADATAPLACEQUERY = "SELECT MAX(place) FROM metadatavalue WHERE item_id = ? AND metadata_field_id = ?";
+    private int getMaxPlaceValue(int packageItemId, int relationFieldCode, DBConnection dbc) throws SQLException {
         final PreparedStatement p = dbc.getConnection().prepareStatement(METADATAPLACEQUERY);
         p.setInt(1, packageItemId);
         p.setInt(2, relationFieldCode);
         ResultSet rs = p.executeQuery();
         int maxPlace = 0;
-        while(rs.next()){
-            int place = rs.getInt(1);
-            if (place>maxPlace){
-                maxPlace = place;
-            }
+        if(rs.next()){
+            maxPlace = rs.getInt(1);
         }
         return maxPlace;
     }
