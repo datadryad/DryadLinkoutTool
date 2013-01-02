@@ -92,6 +92,7 @@
 	
 	<target name="build" description="builds for Unix type (OSX,Linux) systems"
 		depends="compile-main">	
+		<copy todir="${buildDir}" file="${basedir}/buildfiles/generateLinkout.sh"/>
 	</target>
 	
 	

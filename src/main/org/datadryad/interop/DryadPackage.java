@@ -82,7 +82,7 @@ public class DryadPackage {
     
 
     final static String REFERENCEDBYQUERY = "SELECT metadata_field_id FROM metadatafieldregistry WHERE element='relation' AND qualifier='isreferencedby'";
-    static int getIsReferencedByID(DBConnection dbc) throws SQLException{
+    static int getIsReferencedByFieldCode(DBConnection dbc) throws SQLException{
         Statement s = dbc.getConnection().createStatement();
         ResultSet rs = s.executeQuery(REFERENCEDBYQUERY);
         if (rs.next()){
@@ -97,7 +97,7 @@ public class DryadPackage {
 
     
     final static String IDENTIFIERQUERY = "SELECT metadata_field_id FROM metadatafieldregistry WHERE element='identifier' AND qualifier IS NULL";
-    static int getIdentiferID(DBConnection dbc) throws SQLException{
+    static int getIdentiferFieldCode(DBConnection dbc) throws SQLException{
         Statement s = dbc.getConnection().createStatement();
         ResultSet rs = s.executeQuery(IDENTIFIERQUERY);
         if (rs.next()){
@@ -129,17 +129,17 @@ public class DryadPackage {
     final static String PACKAGEITEMQUERY = "SELECT item_id FROM collection2item WHERE collection_id = ?";
     public static void getPackages(Set<DryadPackage> packages, String packageCollectionName, DBConnection dbc) throws SQLException {
         final int packageCollectionID = getPackageCollectionID(packageCollectionName,dbc);
-        final int referencedByID = getIsReferencedByID(dbc);
-        final int identifierID = getIdentiferID(dbc);
-        logger.info("dc:relation:isreferencedby = " + referencedByID);
-        logger.info("dc:identifier = " + identifierID);
+        final int referencedByFieldCode = getIsReferencedByFieldCode(dbc);
+        final int identifierFieldCode = getIdentiferFieldCode(dbc);
+        logger.info("dc:relation:isreferencedby = " + referencedByFieldCode);
+        logger.info("dc:identifier = " + identifierFieldCode);
         PreparedStatement p = dbc.getConnection().prepareStatement(PACKAGEITEMQUERY);
         p.setInt(1, packageCollectionID);
         ResultSet rs = p.executeQuery();
         while(rs.next()){
             final int nextid = rs.getInt(1);
-            final Set<String> identifiers = queryMetaData(nextid,identifierID,dbc);
-            final Set<String> myPubIDs = queryMetaData(nextid,referencedByID,dbc);
+            final Set<String> identifiers = queryMetaData(nextid,identifierFieldCode,dbc);
+            final Set<String> myPubIDs = queryMetaData(nextid,referencedByFieldCode,dbc);  //this is every identifier linked to the package using referenedBy; doi's and PMIDs
             String myDoi = null;
             for (String doiCandidate: identifiers){
                 if (doiCandidate.startsWith(DRYADDOIPREFIX) || doiCandidate.startsWith(DRYADHTTPPREFIX)){
@@ -157,7 +157,7 @@ public class DryadPackage {
             String pubDOI = null;
             String pubPMID = null;
             for (String pubId : myPubIDs){
-                if (pubId.contains("PMID")){
+                if (pubId.startsWith("PMID") || pubId.startsWith("pmid")){
                     pubPMID = pubId;
                 }
                 if (pubId.startsWith(DOIPREFIX) || pubId.startsWith(HTTPDOIPREFIX)){
@@ -191,7 +191,8 @@ public class DryadPackage {
         if (publicationPMID != null){
             return;  //got one already, assume it's good
         }
-        try {
+        //otherwise if the publicationPMID was not set when the package was loaded by getPackages, try querying NCBI using the doi
+        try { 
             URL lookupURL;
             if (publicationDOI.charAt(4) == ' '){
                 lookupURL = new URL(PMIDQUERYURI+publicationDOI.substring(5)+PMIDQUERYSUFFIX);                
@@ -200,16 +201,20 @@ public class DryadPackage {
                 lookupURL = new URL(PMIDQUERYURI+publicationDOI.substring(4)+PMIDQUERYSUFFIX);
             }
             pmids = processPubmedXML(lookupURL);
-            if (pmids.size() >1){
-                logger.debug("Publication " + publicationDOI + " has " + pmids.size() + " pmids");
-            }
-            if (pmids.size() == 0){
-                logger.debug("Publication " + publicationDOI + " has 0 pmids");
-            }
-            else {
-                Iterator<String> pmidIt = pmids.iterator();
-                publicationPMID = "PMID:" + pmidIt.next();
-                final int referenced_by_id = getIsReferencedByID(dbc);
+            String plural = pmids.size() == 1 ? "" : "s";
+            logger.debug("Publication " + publicationDOI + " has " + pmids.size() + " pmid" + plural);
+            if (pmids.size() > 0) {
+                final String rawPMID = pmids.iterator().next();  //get the first element of a what should be a singleton collection
+                if (rawPMID.startsWith("PMID")){
+                    publicationPMID = rawPMID;
+                }
+                else if (rawPMID.startsWith("pmid")){
+                    publicationPMID = "PMID" + rawPMID.substring("pmid".length());
+                }
+                else{
+                    publicationPMID = "PMID:" + rawPMID;
+                }
+                final int referenced_by_id = getIsReferencedByFieldCode(dbc);
                 insertMetaData(itemid,referenced_by_id,dbc);
             }
         } catch (MalformedURLException e) {
@@ -277,15 +282,30 @@ public class DryadPackage {
 
     
     final static String METADATAINSERT = "INSERT INTO metadatavalue (item_id,metadata_field_id,text_value,place) VALUES(?,?,?,?)";
-    public void insertMetaData(int packageItemID, int relationID, DBConnection dbc) throws SQLException {
+    public void insertMetaData(int packageItemId, int relationFieldCode, DBConnection dbc) throws SQLException {
         final PreparedStatement p = dbc.getConnection().prepareStatement(METADATAINSERT);
-        logger.info("Inserting PMID " + publicationPMID + " for " + packageDOI);
-        p.setInt(1, itemid);
-        p.setInt(2, relationID);
+        final int place = getMaxPlaceValue(packageItemId, relationFieldCode, dbc)+1;
+        logger.info("Inserting PMID " + publicationPMID + " for " + packageDOI + " in place " + place);
+        p.setInt(1, packageItemId);
+        p.setInt(2, relationFieldCode);
         p.setString(3, publicationPMID);
-        p.setInt(4,2);  //PMID is a 'secondary' identifier
+        p.setInt(4,place);
         p.executeUpdate();
     }
+    
+    final static String METADATAPLACEQUERY = "SELECT MAX(place) FROM metadatavalue WHERE item_id = ? AND metadata_field_id = ?";
+    private int getMaxPlaceValue(int packageItemId, int relationFieldCode, DBConnection dbc) throws SQLException {
+        final PreparedStatement p = dbc.getConnection().prepareStatement(METADATAPLACEQUERY);
+        p.setInt(1, packageItemId);
+        p.setInt(2, relationFieldCode);
+        ResultSet rs = p.executeQuery();
+        int maxPlace = 0;
+        if(rs.next()){
+            maxPlace = rs.getInt(1);
+        }
+        return maxPlace;
+    }
+    
     
     public Set<String>getPMIDs(){
         return pmids;
