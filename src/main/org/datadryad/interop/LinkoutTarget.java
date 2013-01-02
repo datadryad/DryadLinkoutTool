@@ -21,7 +21,7 @@ public abstract class LinkoutTarget {
     
     final static int INDENTSIZE = 3;
     
-    final static String ICONURL = "http://www.nescent.org/wg/dryad/images/7/7f/DryadLogo-Button.png";
+    final static String ICONURL = "http://wiki.datadryad.org/wg/dryad/images/7/7f/DryadLogo-Button.png";
     final static String DISCOVERBASE = "http://datadryad.org/discover?";
     final static String DISCOVERRULE = "query=" + "%22&lo.doi;%22";
     final static String DTDROOTELEMENT = "LinkSet";
