@@ -40,7 +40,6 @@
 	<property name="sourceLib" location="${sourceDir}/lib"/>
 	<property name="unitTestDir" location="${basedir}/src/test"/>
 	<property name="jarsDir" location= "${basedir}/jars"/>
-	<property name="targetDir" location= "${basedir}/targets"/>
 	<property name="buildDir" location= "${basedir}/build"/>
 	<property name="configDir" location= "${basedir}/config"/>
 	<property name="version" value="0.1"/>
@@ -61,7 +60,6 @@
          ================================= -->
     <target name="init"  description="--> description">
     	<mkdir dir="${buildDir}"/>
-    	<mkdir dir="${targetDir}"/>
     </target>
 
 
@@ -91,7 +89,7 @@
 	</target>
 	
 	<target name="build" description="builds for Unix type (OSX,Linux) systems"
-		depends="compile-main">	
+		depends="init,compile-main">	
 		<copy todir="${buildDir}" file="${basedir}/buildfiles/generateLinkout.sh"/>
 	</target>
 	
