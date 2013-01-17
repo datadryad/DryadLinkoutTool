@@ -65,8 +65,8 @@ public class NCBILinkoutBuilder {
      */
     public static void main(String[] args) throws Exception {
         final NCBILinkoutBuilder builder = new NCBILinkoutBuilder();
-        if (args.length > 2){
-            builder.process(args[1],args[2]);
+        if (args.length == 2){
+            builder.process(args[0],args[1]);
         }
         else
             builder.process(DEFAULTPUBLINKFILE,DEFAULTSEQLINKFILE);

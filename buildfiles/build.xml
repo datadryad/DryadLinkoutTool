@@ -85,12 +85,13 @@
 		</javac>
 		<copy tofile="${buildDir}/org/datadryad/interop/Connection.properties" file="${configDir}/Connection.properties"/>
 		<copy tofile="${buildDir}/org/datadryad/interop/testConnection.properties" file="${configDir}/testConnection.properties"/>
-		<copy tofile="${configDir}/log4j.properties" file="${configDir}/log4j.properties"/>
+		<copy tofile="${buildDir}/log4j.properties" file="${configDir}/log4j.properties"/>
 	</target>
 	
 	<target name="build" description="builds for Unix type (OSX,Linux) systems"
 		depends="init,compile-main">	
 		<copy todir="${buildDir}" file="${basedir}/buildfiles/generateLinkout.sh"/>
+		<copy todir="${buildDir}" file="${basedir}/buildfiles/generateUploadLinkout.sh"/>
 	</target>
 	
 	
