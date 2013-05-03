@@ -20,6 +20,7 @@ public class LabsLinkLinksBuilder {
     
     static final String PACKAGECOLLECTIONNAME = "Dryad Data Packages";
     static final String DEFAULTLINKSFILE = "labslinklinkout";
+    static final String DEFAULTPROFILEFILE = "labslinkprofile";
     
     final Set<DryadPackage> dryadPackages = new HashSet<DryadPackage>();
     
@@ -32,11 +33,14 @@ public class LabsLinkLinksBuilder {
     public static void main(String[] args) throws Exception {
         final LabsLinkLinksBuilder builder = new LabsLinkLinksBuilder();
         String linkFileName = DEFAULTLINKSFILE;
-        if (args.length == 1){
+        String profileFileName = DEFAULTPROFILEFILE;
+        if (args.length == 2){
             linkFileName = args[0];
+            profileFileName = args[1];
         }
         builder.readDataPackagesFromDatabase();
         builder.generateLinksFile(linkFileName);
+        builder.generateProfileFile(profileFileName);
     }
 
 
@@ -47,7 +51,6 @@ public class LabsLinkLinksBuilder {
     }
 
     /**
-     * @throws ParserConfigurationException
      * @throws IOException 
      */
     private void generateLinksFile(String linksFile) throws IOException {
@@ -59,6 +62,11 @@ public class LabsLinkLinksBuilder {
             }
         }
         target.save(linksFile);
+    }
+
+    private void generateProfileFile(String profileFile) throws IOException {
+        final LabsLinkProfileTarget target = new LabsLinkProfileTarget();
+        target.save(profileFile);
     }
     
     private DBConnection getConnection(){
