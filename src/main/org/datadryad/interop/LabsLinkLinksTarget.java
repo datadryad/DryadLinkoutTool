@@ -44,10 +44,11 @@ public class LabsLinkLinksTarget {
             Element resourceElement = new Element("resource");
             //     <title>The Title of the Resource</title>
             Element titleElement = new Element("title");
-            titleElement.appendChild(dryadPackage.getDOI()); // TODO: get data package description
+            titleElement.appendChild(dryadPackage.getTitle());
             resourceElement.appendChild(titleElement);
             //     <url>http://url.for.resource</url>
-            Element urlElement = new Element("url",  BASE_URL + dryadPackage.getDOI());
+            Element urlElement = new Element("url");
+            urlElement.appendChild(BASE_URL + dryadPackage.getDOI());
             resourceElement.appendChild(urlElement);
             //   </resource>
             linkElement.appendChild(resourceElement);
