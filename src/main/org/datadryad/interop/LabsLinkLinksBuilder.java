@@ -13,7 +13,12 @@ import java.util.Set;
 
 
 import org.apache.log4j.Logger;
-
+/**
+ * Generates LabsLink XML files of Dryad Content for EuropePMC.
+ * Similar to NCBILinkoutBuilder, but does not modify Dryad content.
+ * Simply generates links for content in Dryad with PMID and DOI.
+ * @author Dan Leehr <dan.leehr@nescent.org>
+ */
 public class LabsLinkLinksBuilder {
 
     DBConnection dbc;
