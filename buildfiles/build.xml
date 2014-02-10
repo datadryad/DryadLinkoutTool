@@ -93,6 +93,7 @@
 		<copy todir="${buildDir}" file="${basedir}/buildfiles/generateLinkout.sh"/>
 		<copy todir="${buildDir}" file="${basedir}/buildfiles/generateUploadLinkout.sh"/>
 		<copy todir="${buildDir}" file="${basedir}/buildfiles/generateLabsLinkFiles.sh"/>
+		<copy todir="${buildDir}" file="${basedir}/buildfiles/generateUploadLabsLink.sh"/>
 	</target>
 	
 	
