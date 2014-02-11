@@ -18,8 +18,7 @@ OUTPUT_DIR="$LABSLINK_TOOL_DIR/output-labslink"
 JAVA_OPTS=-Xmx1600M
 CLASSPATH=".:../jars/commons-lang-2.2.jar:../jars/postgresql-9.0-802.jdbc4.jar:../jars/log4j-1.2.15.jar:../jars/xom-1.2.7.jar"
 LABSLINK_XSD="http://europepmc.org/docs/labslink.xsd"
-#TODO: Get LABSLINK ftp
-LABSLINK_FTP=""
+LABSLINK_FTP="ftp://labslink.ebi.ac.uk/f24ml3c8/"
 LABSLINK_ERROR_EMAIL="linkout@datadryad.org"
 LABSLINK_ERROR_FILE="/tmp/labslink.error"
 
