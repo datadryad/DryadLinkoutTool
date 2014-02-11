@@ -53,6 +53,7 @@ public class DryadPackage {
     private String publicationDOI = null;
     private String publicationPMID = null;
     private String packageDOI = null;
+    private String packageTitle = null;
     //TODO if there is no DOI, these fields should be filled to facilitate direct search
     private String journal;
     private String date;
@@ -110,6 +111,20 @@ public class DryadPackage {
         }
     }
 
+    final static String TITLEQUERY = "SELECT metadata_field_id FROM metadatafieldregistry WHERE element='title' AND qualifier IS NULL";
+    static int getTitleFieldCode(DBConnection dbc) throws SQLException{
+        Statement s = dbc.getConnection().createStatement();
+        ResultSet rs = s.executeQuery(TITLEQUERY);
+        if (rs.next()){
+            return rs.getInt(1);
+        }
+        else {
+            final String message = "Could not retrieve title type 'dc:title' from metadatafieldregistry";
+            logger.fatal(message);
+            throw new RuntimeException(message);
+        }
+    }
+
     final static String METADATAQUERY = "SELECT text_value FROM metadatavalue WHERE item_id = ? AND metadata_field_id = ?";
     public static Set<String> queryMetaData(int packageItemID, int relationID, DBConnection dbc) throws SQLException {
         final PreparedStatement p = dbc.getConnection().prepareStatement(METADATAQUERY);
@@ -131,6 +146,7 @@ public class DryadPackage {
         final int packageCollectionID = getPackageCollectionID(packageCollectionName,dbc);
         final int referencedByFieldCode = getIsReferencedByFieldCode(dbc);
         final int identifierFieldCode = getIdentiferFieldCode(dbc);
+        final int titleFieldCode = getTitleFieldCode(dbc);
         logger.info("dc:relation:isreferencedby = " + referencedByFieldCode);
         logger.info("dc:identifier = " + identifierFieldCode);
         PreparedStatement p = dbc.getConnection().prepareStatement(PACKAGEITEMQUERY);
@@ -140,6 +156,7 @@ public class DryadPackage {
             final int nextid = rs.getInt(1);
             final Set<String> identifiers = queryMetaData(nextid,identifierFieldCode,dbc);
             final Set<String> myPubIDs = queryMetaData(nextid,referencedByFieldCode,dbc);  //this is every identifier linked to the package using referenedBy; doi's and PMIDs
+            final Set<String> titles = queryMetaData(nextid,titleFieldCode, dbc);
             String myDoi = null;
             for (String doiCandidate: identifiers){
                 if (doiCandidate.startsWith(DRYADDOIPREFIX) || doiCandidate.startsWith(DRYADHTTPPREFIX)){
@@ -156,6 +173,7 @@ public class DryadPackage {
             }
             String pubDOI = null;
             String pubPMID = null;
+            String pkgTitle = null;
             for (String pubId : myPubIDs){
                 if (pubId.startsWith("PMID") || pubId.startsWith("pmid")){
                     pubPMID = pubId;
@@ -164,16 +182,21 @@ public class DryadPackage {
                     pubDOI = pubId;
                 }
             }
-            DryadPackage newPackage = new DryadPackage(nextid,pubDOI,pubPMID,myDoi);
+            Iterator<String> iterator = titles.iterator();
+            if(iterator.hasNext()) {
+                pkgTitle = iterator.next();
+            }
+            DryadPackage newPackage = new DryadPackage(nextid,pubDOI,pubPMID,myDoi,pkgTitle);
             packages.add(newPackage);
         }
     }
 
-    DryadPackage(int id, String pubDOI, String pubPMID,String pkgDOI){
+    DryadPackage(int id, String pubDOI, String pubPMID, String pkgDOI, String pkgTitle){
         itemid = id;
         publicationDOI = pubDOI;
         publicationPMID = pubPMID;
         packageDOI = pkgDOI;
+        packageTitle = pkgTitle;
     }
     
     
@@ -184,7 +207,10 @@ public class DryadPackage {
     public String getDOI(){
         return packageDOI;
     }
-   
+
+    public String getTitle(){
+        return packageTitle;
+    }
 
 
     public void lookupPMID(DBConnection dbc) {
@@ -305,7 +331,7 @@ public class DryadPackage {
         }
         return maxPlace;
     }
-    
+
     
     public Set<String>getPMIDs(){
         return pmids;
