@@ -22,7 +22,7 @@ public class OtherTarget extends LinkoutTarget {
 
     final static String RESOURCEBASE = "http://datadryad.org/resource/";
 
-    private final static int OBJECTLIMIT = 150000;
+    private final static int OBJECTLIMIT = 100000;
 
     private int linkCount = 0;   //incremented for each generated Link
     private int objectCount = OBJECTLIMIT;  //incremented for each generated ObjId
