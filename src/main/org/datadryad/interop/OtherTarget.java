@@ -25,8 +25,8 @@ public class OtherTarget extends LinkoutTarget {
     private final static long BYTE_LIMIT = 16 * 1024 * 1024L; // 16MB
 
     private int linkCount = 0;   //incremented for each generated Link
-    private long byteCount = BYTE_LIMIT; // incremented at each
-    private long objectCount = OBJECTLIMIT;
+    private long byteCount = BYTE_LIMIT; // updated on append() call
+    private long objectCount = OBJECTLIMIT; // incremented on addObjectLink()
     private String targetFile;
     private OutputStreamWriter writer;
     private FileOutputStream outputStream;
