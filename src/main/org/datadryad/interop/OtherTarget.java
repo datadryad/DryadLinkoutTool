@@ -116,13 +116,8 @@ public class OtherTarget extends LinkoutTarget {
                         startPackage(); // generates link header
                         startObjectSelector();
                         startObjectList();
-                        boolean lastObject = false;
+                        boolean changedFileOnLastObject = false;
                         for(int i=0;i< objectIds.size();i++) {
-                            if(i == objectIds.size() - 1) {
-                                // To prevent writing an opening ObjectList tag
-                                // if it will be empty
-                                lastObject = true;
-                            }
                             String objectId = objectIds.get(i);
                             // Add object before checking if full
                             // because we may be "full" after the opening <ObjectList> tag
@@ -140,18 +135,25 @@ public class OtherTarget extends LinkoutTarget {
                                 generateLinkFooter();
                                 endPackage();
                                 endFile();
-
-                                // Start new stack
-                                // But what if this was the last object, we'll have an empty object list
                                 startFile();
-                                if(!lastObject) {
+                                if(i == objectIds.size() - 1) {
+                                    // To prevent writing an opening ObjectList tag
+                                    // if it will be empty
+                                    changedFileOnLastObject = true;
+                                }
+                                // Start new stack, but only if there are more
+                                // objects to write for this database
+                                if(!changedFileOnLastObject) {
                                     startPackage();
                                     startObjectSelector();
                                     startObjectList();
                                 }
                             }
                         }
-                        if(!lastObject) {
+                        // Add the closing tags, but only if we're in the middle
+                        // of a list
+
+                        if(!changedFileOnLastObject) {
                             endObjectList();
                             endObjectSelector();
                             endPackage();
