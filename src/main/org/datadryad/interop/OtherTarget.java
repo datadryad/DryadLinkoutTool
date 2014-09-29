@@ -10,55 +10,173 @@ package org.datadryad.interop;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.util.ArrayList;
 import java.util.Date;
-
+import java.util.List;
 import org.apache.commons.lang.StringEscapeUtils;
 
 /**
  * This class handles links to other databases (e.g., genbank, taxonomy, etc.) 
  */
 public class OtherTarget extends LinkoutTarget {
-
-
     final static String RESOURCEBASE = "http://datadryad.org/resource/";
 
-    private final static int OBJECTLIMIT = 100000;
+    private final static long OBJECTLIMIT = 100000L;
+    private final static long BYTE_LIMIT = 16 * 1024 * 1024L; // 16MB
 
     private int linkCount = 0;   //incremented for each generated Link
-    private int objectCount = OBJECTLIMIT;  //incremented for each generated ObjId
-    private int fileCount = 1; 
+    private long byteCount = BYTE_LIMIT; // incremented at each
+    private long objectCount = OBJECTLIMIT;
+    private String targetFile;
+    private OutputStreamWriter writer;
+    private FileOutputStream outputStream;
+    private int fileCount = 0;
 
+    private DryadPackage currentPackage;
+    private String dbName;
+
+    private void startFile() throws IOException {
+        if(writer != null) {
+            endFile();
+        }
+        byteCount = 0L;
+        objectCount = 0L;
+        fileCount++;
+        String nextFileName = String.format("%s%06d.xml", targetFile, fileCount);
+        outputStream = new FileOutputStream(nextFileName, false);
+        writer = new OutputStreamWriter(outputStream);
+        
+        append(generateHeader()); // <xml> and <dtd>
+        append(openLinkSet()); // <LinkSet>
+    }
+
+    private void append(final String text) throws IOException {
+        writer.append(text);
+        byteCount += text.length();
+    }
+
+    private boolean fileFull() {
+        return byteCount >= BYTE_LIMIT || objectCount >= OBJECTLIMIT;
+    }
+
+    private void endFile() throws IOException {
+        append(closeLinkSet());
+        writer.flush();
+        writer.close();
+        outputStream.flush();
+        outputStream.close();
+        outputStream = null;
+        writer = null;
+    }
+
+    private void startPackage() throws IOException {
+        String linkHeader = generateLinkHeader(generateProviderId(), generateIconUrl());
+        append(linkHeader);
+    }
+
+    private void endPackage() throws IOException {
+        String linkFooter = generateLinkFooter();
+        append(linkFooter);
+    }
+
+    private void startObjectSelector() throws IOException {
+        String objectSelectorHeader = generateObjectSelectorHeader();
+        append(objectSelectorHeader);
+    }
+
+    private void endObjectSelector() throws IOException {
+        String objectSelectorFooter = generateObjectSelectorFooter();
+        append(objectSelectorFooter);
+    }
+
+    private void startObjectList() throws IOException {
+        String objectListHeader = generateObjectListHeader();
+        append(objectListHeader);
+    }
+
+    private void endObjectList() throws IOException {
+        String objectListFooter = generateObjectListFooter();
+        append(objectListFooter);
+    }
 
     @Override
     void save(String targetFile) throws IOException{
-        FileOutputStream s = null;
-        OutputStreamWriter w = null;
-        for (DryadPackage pkg : packages){
-            if (pkg.hasSeqLinks()){                           
-                for (String dbName : pkg.getSeqDBs()){
-                    if (objectCount >= OBJECTLIMIT){
-                        if (w != null){
-                            w.append(closeLinkSet());
-                            w.close();
+        this.targetFile = targetFile;
+        startFile();
+        for (DryadPackage pkg : packages) {
+            if (pkg.hasSeqLinks()){
+                this.currentPackage = pkg;
+                // Loop over sequence databases
+                for (String sequenceDBName : pkg.getSeqDBs()) {
+                    this.dbName = sequenceDBName;
+                    // Get the object IDs for the current package and NCBI database
+                    List<String> objectIds = objectIdsForCurentPackageAndDatabase();
+                    // Only create a <Link> if we have 1 or more objects
+                    if(objectIds.size() > 0) { 
+                        startPackage(); // generates link header
+                        startObjectSelector();
+                        startObjectList();
+                        boolean lastObject = false;
+                        for(int i=0;i< objectIds.size();i++) {
+                            if(i == objectIds.size() - 1) {
+                                // To prevent writing an opening ObjectList tag
+                                // if it will be empty
+                                lastObject = true;
+                            }
+                            String objectId = objectIds.get(i);
+                            // Add object before checking if full
+                            // because we may be "full" after the opening <ObjectList> tag
+                            // and an empty <ObjectList> is not valid
+                            addObjectLink(objectId);
+                            // Check if we've reached the object limit or size limit
+                            // This is not super precise, because full only returns true
+                            // if we're over the limit - for simplicity.
+                            // NCBI FTP's file size limit is 32MB, so we set our files
+                            // to limit much lower
+                            if(fileFull()) {
+                                // Close current stack
+                                endObjectList();
+                                endObjectSelector();
+                                generateLinkFooter();
+                                endPackage();
+                                endFile();
+
+                                // Start new stack
+                                // But what if this was the last object, we'll have an empty object list
+                                startFile();
+                                if(!lastObject) {
+                                    startPackage();
+                                    startObjectSelector();
+                                    startObjectList();
+                                }
+                            }
                         }
-                        objectCount = 0;
-                        String nextFile = targetFile + fileCount + ".xml";
-                        fileCount++;
-                        s = new FileOutputStream(nextFile, false);
-                        w = new OutputStreamWriter(s);
-                        w.append(generateHeader());
-                        w.append(openLinkSet());
+                        if(!lastObject) {
+                            endObjectList();
+                            endObjectSelector();
+                            endPackage();
+                        }
                     }
-                    w.append(generateLink(pkg,dbName,generateProviderId(),generateIconUrl()));
                 }
             }
         }
-        if (w != null){
-            w.append(closeLinkSet());
-            w.close();
-        }
+        endFile();
     }
 
+    private void addObjectLink(String objectId) throws IOException {
+        String objectTag = generateObjIdElement(objectId);
+        append(objectTag);
+        append("\n");
+        objectCount++;
+    }
+
+    private List<String> objectIdsForCurentPackageAndDatabase() {
+        List<String> objectIds = new ArrayList<String>();
+        for (SequenceRecord sr : this.currentPackage.getSeqLinksforDB(this.dbName)){
+            objectIds.add(sr.getID());
+        }
+        return objectIds;
+    }
 
     private String generateHeader(){
         final StringBuilder header = new StringBuilder();
@@ -78,16 +196,19 @@ public class OtherTarget extends LinkoutTarget {
         return "</" + DTDROOTELEMENT + ">\n";       
     }
 
-
-    private String generateLink(DryadPackage pkg, String db, String provider, String iconURL){
+    private String generateLinkHeader(String provider, String iconURL) {
         final StringBuilder result = new StringBuilder(500);
-        result.append(getIndent(1));        
+        result.append(getIndent(1));
         result.append("<Link>\n");
         result.append(generateLinkId());
         result.append(provider);
         result.append(iconURL);
-        result.append(generateObjectSelector(pkg,db));
-        result.append(generateObjectUrl(pkg));
+        return result.toString();
+    }
+    
+    private String generateLinkFooter() {
+        final StringBuilder result = new StringBuilder(500);
+        result.append(generateObjectUrl(currentPackage));
         result.append(getIndent(1));        
         result.append("</Link>\n");
         return result.toString();
@@ -105,37 +226,34 @@ public class OtherTarget extends LinkoutTarget {
         return result.toString();
     }
 
-
-
-
-    //TODO what a package that has references from multiple databases
-    private String generateObjectSelector(DryadPackage pkg,String db){
+    private String generateObjectSelectorHeader() {
         final StringBuilder result = new StringBuilder(300);
         result.append(getIndent(2));
         result.append("<ObjectSelector>\n");
-        result.append(generateDatabase(db));
-        result.append(generateObjectList(pkg,db));
+        result.append(generateDatabase(this.dbName));
+        return result.toString();
+    }
+
+    private String generateObjectSelectorFooter() {
+        final StringBuilder result = new StringBuilder(300);
         result.append(getIndent(2));
         result.append("</ObjectSelector>\n");
         return result.toString();
     }
 
-
-    private String generateObjectList(DryadPackage pkg,String db){
-        final StringBuilder result = new StringBuilder(120);
+    private String generateObjectListHeader() {
+        final StringBuilder result = new StringBuilder(300);
         result.append(getIndent(3));
         result.append("<ObjectList>\n");
-        for (SequenceRecord sr : pkg.getSeqLinksforDB(db)){
-            objectCount++;
-            result.append(generateObjIdElement(sr.getID()));
-            result.append("\n");   //insert xml comment here??
-        }
+        return result.toString();
+    }
+
+    private String generateObjectListFooter() {
+        final StringBuilder result = new StringBuilder(300);
         result.append(getIndent(3));
         result.append("</ObjectList>\n");
         return result.toString();
     }
-
-
 
     String generateObjectUrl(DryadPackage pkg){
         final StringBuilder result = new StringBuilder(120);
@@ -167,6 +285,5 @@ public class OtherTarget extends LinkoutTarget {
         result.append("</Rule>\n");
         return result.toString();
     }
-
 
 }
