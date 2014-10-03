@@ -101,7 +101,7 @@ public class NCBILinkoutBuilder {
             }
         }
         logger.info("Found " + dryadPackages.size() + " packages");
-        logger.info("Found " + doiCount + " packages with no DOI");
+        logger.info("Found " + doiCount + " packages with no Publication DOI");
         logger.info("Found " + pmidCount + " publications with a DOI that resolved to no PMIDs");
         dbc.disconnect();
         generatePubLinkout(publinkFile);
