@@ -11,6 +11,7 @@ fi
 JAVA_BIN=/usr/bin/java
 CURL_BIN=/usr/bin/curl
 XMLLINT_BIN=/usr/bin/xmllint
+GZIP_BIN=/bin/gzip
 
 LABSLINK_FTP_PASSWORD_FILE=$1
 LABSLINK_TOOL_DIR=`dirname $0`
@@ -45,7 +46,8 @@ done
 # 3. Upload the labslink files
 for LABSLINK_FILE in $OUTPUT_DIR/*
 do
-	$CURL_BIN "$LABSLINK_FTP" -T "$LABSLINK_FILE" -K "$LABSLINK_FTP_PASSWORD_FILE" 2> "$LABSLINK_ERROR_FILE"
+	$GZIP_BIN "$LABSLINK_FILE"
+	$CURL_BIN "$LABSLINK_FTP" -T "${LABSLINK_FILE}.gz" -K "$LABSLINK_FTP_PASSWORD_FILE" 2> "$LABSLINK_ERROR_FILE"
 done
 
 # Cleanup, remove generated files
