@@ -26,6 +26,10 @@ LABSLINK_ERROR_FILE="/tmp/labslink.error"
 # Trap any error output and mail it
 trap 'mail -s "Error running `basename $0` on line $LINENO; rc=$?" "$LABSLINK_ERROR_EMAIL" < "$LABSLINK_ERROR_FILE" >/dev/null' ERR
 
+# Cleanup, remove any old generated files
+
+rm -rf "$OUTPUT_DIR" 2> "$LABSLINK_ERROR_FILE"
+
 # 0. Make the output dir if it does not yet exist
 cd "$LABSLINK_TOOL_DIR"
 if [ ! -d "$OUTPUT_DIR" ]; then
@@ -50,6 +54,3 @@ do
 	$CURL_BIN "$LABSLINK_FTP" -T "${LABSLINK_FILE}.gz" -K "$LABSLINK_FTP_PASSWORD_FILE" 2> "$LABSLINK_ERROR_FILE"
 done
 
-# Cleanup, remove generated files
-
-rm -rf "$OUTPUT_DIR" 2> "$LABSLINK_ERROR_FILE"

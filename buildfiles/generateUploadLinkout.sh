@@ -25,6 +25,10 @@ LINKOUT_ERROR_FILE="/tmp/linkout.error"
 # Trap any error output and mail it
 trap 'mail -s "Error running `basename $0` on line $LINENO; rc=$?" "$LINKOUT_ERROR_EMAIL" < "$LINKOUT_ERROR_FILE" >/dev/null' ERR
 
+# Cleanup, remove old generated files
+
+rm -rf "$OUTPUT_DIR" 2> "$LINKOUT_ERROR_FILE"
+
 # 0. Make the output dir if it does not yet exist
 cd "$LINKOUT_TOOL_DIR"
 if [ ! -d "$OUTPUT_DIR" ]; then
@@ -48,6 +52,4 @@ do
 	$CURL_BIN "$LINKOUT_FTP" -T "$LINKOUT_FILE" -K "$LINKOUT_FTP_PASSWORD_FILE" 2> "$LINKOUT_ERROR_FILE"
 done
 
-# Cleanup, remove generated files
 
-rm -rf "$OUTPUT_DIR" 2> "$LINKOUT_ERROR_FILE"
