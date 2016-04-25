@@ -249,7 +249,9 @@ public class DryadPackage {
         } catch (SQLException e) {
             final String message = "Error while trying to add PMID to metadata for " + publicationDOI;
             logger.error(message,e);
-        }
+        } catch (StringIndexOutOfBoundsException e) {
+	    logger.error("Unable to parse DOI for item_id " + itemid, e);
+	}
     }
 
     
