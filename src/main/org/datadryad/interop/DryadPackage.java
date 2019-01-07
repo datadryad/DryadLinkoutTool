@@ -44,9 +44,9 @@ public class DryadPackage {
     final static String PMIDQUERYURI = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=";
     final static String PMIDQUERYSUFFIX = "[doi]"; 
     final static String DRYADDOIPREFIX = "doi:10.5061/dryad";
-    final static String DRYADHTTPPREFIX = "http://dx.doi.org/10.5061/dryad";
+    final static String DRYADHTTPPREFIX = "https://doi.org/10.5061/dryad";
     final static String DOIPREFIX = "doi:";
-    final static String HTTPDOIPREFIX = "http://dx.doi.org/";
+    final static String HTTPDOIPREFIX = "https://doi.org/";
 
     
     int itemid;
