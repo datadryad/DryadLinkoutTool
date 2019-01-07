@@ -19,7 +19,7 @@ import nu.xom.Serializer;
  * @author dan.leehr@nescent.org
  */
 public class LabsLinkLinksTarget {
-    private static final String BASE_URL = "http://dx.doi.org/";
+    private static final String BASE_URL = "https://doi.org/";
     private static final String DRYAD_PROVIDER_ID = "1012";
     private static final String PUBMED_RECORD_SOURCE = "MED";
 
